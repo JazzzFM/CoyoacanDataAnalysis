@@ -17,9 +17,9 @@ Este proyecto tiene como objetivo realizar un análisis detallado de la alcaldí
 5. **Proponer Recomendaciones Estratégicas**: Basado en los hallazgos, sugerir intervenciones y políticas públicas que mejoren la calidad de vida en Coyoacán, enfocándose en los grupos más vulnerables y en áreas con mayores necesidades.
 
 
-# Plan para Importar y Organizar Datos Georreferenciados de Coyoacán
+## Plan para Importar y Organizar Datos Georreferenciados de Coyoacán
 
-## Definir los Datos Necesarios
+### Definir los Datos Necesarios
 
 - **Datos de Suelos**: Información edafológica de Coyoacán (calidad del suelo, uso del suelo, etc.).
 - **Datos Demográficos**: Población, densidad, ingresos, educación.
