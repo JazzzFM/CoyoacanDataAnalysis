@@ -16,8 +16,26 @@ Este proyecto tiene como objetivo realizar un análisis detallado de la alcaldí
 
 5. **Proponer Recomendaciones Estratégicas**: Basado en los hallazgos, sugerir intervenciones y políticas públicas que mejoren la calidad de vida en Coyoacán, enfocándose en los grupos más vulnerables y en áreas con mayores necesidades.
 
+6. Migración a PostGIS
+   - Objetivo: Migrar los datos geoespaciales desde archivos shapefile (SHP) a una base de datos PostgreSQL con extensión PostGIS.
+   - Funcionalidades: Permitir consultas eficientes de datos georreferenciados mediante índices espaciales y funcionalidades avanzadas de PostGIS.
+   - Pasos:
+     - Configuración de la base de datos en PostgreSQL con soporte PostGIS.
+     - Ingesta de los archivos SHP utilizando herramientas como `ogr2ogr`.
+     - Verificación de integridad y calidad de los datos importados.
+     - Configuración de seguridad y acceso mediante variables de entorno definidas en un archivo `.env`.
+
+7. Creación de un Dashboard con Dash
+   - Objetivo: Crear un dashboard interactivo utilizando Dash que permita visualizar y analizar los datos geoespaciales de Coyoacán.
+   - Funcionalidades: Visualización de mapas, gráficos y otros análisis exploratorios que se integren a lo largo del proyecto.
+   - Pasos:
+     - Desarrollo de la aplicación Dash en Python.
+     - Integración con la base de datos PostGIS para consulta de datos en tiempo real.
+     - Despliegue en un contenedor Docker, con configuración para estar en la misma red interna que el servicio de PostGIS.
+
 
 ## Plan para Importar y Organizar Datos Georreferenciados de Coyoacán
+
 
 ### Definir los Datos Necesarios
 
@@ -84,6 +102,34 @@ pip install -r requirements.txt
 3. **Generación de Visualizaciones**: Ejecuta `visualizations.py` para crear gráficos y mapas interactivos que resumen los hallazgos clave.
 
 4. **Compilación del Reporte**: Ejecuta `compile_report.py` para compilar todas las visualizaciones y resultados en un reporte en PDF.
+
+
+## Arquitectura del Proyecto
+El proyecto está compuesto por los siguientes componentes principales:
+
+1. Base de Datos PostGIS:
+   - Almacena todos los datos geoespaciales y permite realizar consultas eficientes.
+   - Contenedor Docker con PostgreSQL y extensión PostGIS.
+
+2. API y Dashboard:
+   - Aplicación desarrollada en Dash para la visualización y análisis de los datos.
+   - Se comunica directamente con la base de datos PostGIS.
+   - Contenedor Docker separado, pero en la misma red que PostGIS.
+
+3. Red y Seguridad:
+   - Los contenedores estarán bajo la misma red Docker para comunicación segura y eficiente.
+   - Uso de archivos `.env` para gestionar credenciales y configuraciones sensibles, los cuales están listados en el `.gitignore` para evitar exposición.
+
+## Instalación y Configuración
+1. Clona el repositorio y navega a la carpeta del proyecto:
+2. Configura las variables de entorno:
+- Crea un archivo `.env` en la raíz del proyecto basado en el `.env.example`.
+- Asegúrate de definir las credenciales para la base de datos, secretos y configuraciones de red.
+
+3. Construye y levanta los contenedores:
+	
+	docker-compose up --build
+
 
 ## Contribuciones
 
