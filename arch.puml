@@ -1,0 +1,52 @@
+@startuml
+title Arquitectura de Solución del Proyecto de Análisis de Datos de Coyoacán
+
+skinparam componentStyle rectangle
+
+actor Usuario as user
+
+node "VPS Servidor" {
+    node "Docker Engine" {
+        [DashApp] as app <<Container>>
+        [PostgresPostGIS] as db <<Container>>
+    }
+}
+
+cloud "Datos Geoespaciales" as geoData
+
+package "RedDocker" {
+    [coyoacan_network] as net
+}
+
+user --> app : Navegador Web
+app --> db : Conexión DATABASE_URI
+app --> geoData : Lectura Datos Geoespaciales
+app --> net
+db --> net
+geoData --> net
+
+package "ServiciosExternos" {
+    [MapasAPI] as mapsAPI
+}
+
+app ..> mapsAPI : Consumo APIs Mapas
+
+note right of app
+Desplegado en Docker:
+- Ejecuta app.py
+- GeoPandas, SQLAlchemy
+- Visualizaciones interactivas
+end note
+
+note left of db
+PostgreSQL en Docker:
+- Extensión PostGIS
+- Datos geoespaciales
+end note
+
+note bottom of net
+Red Docker:
+- Comunicación entre contenedores
+end note
+
+@enduml
