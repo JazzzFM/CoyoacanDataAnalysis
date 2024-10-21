@@ -1,0 +1,5 @@
+# Dockerfile.db
+FROM postgis/postgis:14-3.2
+
+# Instalar las utilidades de PostGIS
+RUN apt-get update && apt-get install -y postgis postgresql-14-postgis-3-scripts
