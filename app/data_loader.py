@@ -1,26 +1,11 @@
+# app/data_loader.py
+
 import geopandas as gpd
-from sqlalchemy import create_engine
+from app import db  # Importar el objeto db de tu aplicación
 import logging
-import os
-from dotenv import load_dotenv
 
 # Configuración básica de logging
 logger = logging.getLogger(__name__)
-
-# Cargar variables de entorno
-load_dotenv()
-
-# Variables de conexión a la base de datos PostgreSQL
-DB_USER = os.getenv('POSTGRES_USER')
-DB_PASSWORD = os.getenv('POSTGRES_PASSWORD')
-DB_HOST = os.getenv('DB_HOST', 'db')  # Host de Postgres en Docker
-DB_PORT = os.getenv('POSTGRES_PORT', '5432')
-DB_NAME = os.getenv('POSTGRES_DB')
-
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
-# Crear motor de conexión
-engine = create_engine(DATABASE_URL)
 
 def load_coyoacan_boundary():
     """
@@ -31,7 +16,7 @@ def load_coyoacan_boundary():
     """
     try:
         query = "SELECT * FROM public.limites_alcaldias WHERE nomgeo = 'Coyoacán';"
-        gdf = gpd.read_postgis(query, engine, geom_col='geom')
+        gdf = gpd.read_postgis(query, db.engine, geom_col='geom')
         logger.info("Límites de Coyoacán cargados correctamente.")
         return gdf
     except Exception as e:
@@ -47,7 +32,7 @@ def load_land_use():
     """
     try:
         query = "SELECT * FROM public.uso_suelo_coyoacan;"
-        gdf = gpd.read_postgis(query, engine, geom_col='geom')
+        gdf = gpd.read_postgis(query, db.engine, geom_col='geom')
         logger.info("Uso de suelo cargado correctamente.")
         return gdf
     except Exception as e:
@@ -63,43 +48,37 @@ def load_manzanas():
     """
     try:
         query = "SELECT * FROM public.manzanas_coyoacan;"
-        manzanas = gpd.read_postgis(query, engine, geom_col='geom')
+        manzanas = gpd.read_postgis(query, db.engine, geom_col='geom')
         logger.info(f"Manzanas cargadas: {manzanas.shape}")
         logger.debug(manzanas.head())
         
         # Asignar el CRS correcto
-        manzanas = manzanas.set_crs(epsg=6362, allow_override=True)
-        logger.info("CRS de manzanas asignado a EPSG:6362")
+        manzanas = manzanas.to_crs("EPSG:4326")  # Asegurar CRS correcto
+        logger.info("CRS de manzanas asignado a EPSG:4326")
         return manzanas
     except Exception as e:
         logger.error(f"Error al cargar las manzanas: {e}")
         raise
 
 def calcular_uso_suelo_predominante():
-    """
-    Calcula el uso de suelo predominante por manzana.
-    
-    Returns:
-        GeoDataFrame: GeoDataFrame de manzanas con el uso de suelo predominante.
-    """
     try:
         # Cargar los datos
-        coyoacan_boundary = load_coyoacan_boundary()
+        boundary = load_coyoacan_boundary()
         uso_suelo = load_land_use()
         manzanas = load_manzanas()
 
         # Asegurar que los CRS coincidan
         common_crs = uso_suelo.crs
-        if coyoacan_boundary.crs != common_crs:
-            coyoacan_boundary = coyoacan_boundary.to_crs(common_crs)
+        if boundary.crs != common_crs:
+            boundary = boundary.to_crs(common_crs)
             logger.info("Reproyectado límites de Coyoacán al CRS común.")
         if manzanas.crs != common_crs:
             manzanas = manzanas.to_crs(common_crs)
             logger.info("Reproyectado manzanas al CRS común.")
 
         # Recortar los datos al área de Coyoacán
-        uso_suelo_coyoacan = gpd.clip(uso_suelo, coyoacan_boundary)
-        manzanas_coyoacan = gpd.clip(manzanas, coyoacan_boundary)
+        uso_suelo_coyoacan = gpd.clip(uso_suelo, boundary)
+        manzanas_coyoacan = gpd.clip(manzanas, boundary)
         logger.info("Datos recortados al área de Coyoacán.")
 
         # Realizar la unión espacial entre manzanas y uso de suelo
@@ -107,12 +86,25 @@ def calcular_uso_suelo_predominante():
             manzanas_coyoacan,
             uso_suelo_coyoacan,
             how='left',
-            predicate='intersects'  # Usar 'intersects' para mayor precisión
+            predicate='intersects',
+            lsuffix='left',  # Especificar sufijos
+            rsuffix='right'
         )
-        logger.info("Unión espacial completada.")
 
-        # Determinar el uso de suelo predominante en cada manzana
+        logger.info("Unión espacial completada.")
+        logger.debug(f"Columnas después de sjoin: {gdf_union.columns}")
+        logger.debug(gdf_union.head())
+
+        # Renombrar 'identifica_left' a 'identifica' para evitar KeyError
+        if 'identifica_left' in gdf_union.columns:
+            gdf_union = gdf_union.rename(columns={'identifica_left': 'identifica'})
+            gdf_union = gdf_union.drop(columns=['identifica_right'])
+        else:
+            logger.warning("La columna 'identifica_left' no existe en gdf_union.")
+
+        # Ahora, 'identifica' debería existir
         uso_suelo_por_manzana = gdf_union.groupby(['identifica', 'us_dscr']).size().reset_index(name='counts')
+
         idx_max = uso_suelo_por_manzana.groupby('identifica')['counts'].idxmax()
         uso_suelo_predominante = uso_suelo_por_manzana.loc[idx_max]
         logger.info("Cálculo del uso de suelo predominante completado.")
@@ -136,3 +128,4 @@ def calcular_uso_suelo_predominante():
     except Exception as e:
         logger.error(f"Error al calcular el uso de suelo predominante: {e}")
         raise
+

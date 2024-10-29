@@ -1,0 +1,43 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URI=${DATABASE_URI}
+      - SECRET_KEY=${SECRET_KEY}
+      - DASH_PORT=${DASH_PORT}
+    ports:
+      - "${DASH_PORT}:8050"
+    depends_on:
+      - db
+    networks:
+      - coyoacan_network
+    volumes:
+      - .:/app  # Montaje de volumen añadido
+      - ./wait-for-it.sh:/wait-for-it.sh  # Montar el script
+    command: ["./wait-for-it.sh", "db:5432", "--", "gunicorn", "--bind", "0.0.0.0:8050", "run:app"]
+
+  db:
+    image: postgis/postgis:14-3.2
+    container_name: coyoacan_postgis
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - coyoacan_network
+    ports:
+      - "5432:5432"
+
+networks:
+  coyoacan_network:
+
+volumes:
+  postgres_data:
