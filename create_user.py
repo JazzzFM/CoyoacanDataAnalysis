@@ -23,4 +23,3 @@ if __name__ == '__main__':
     else:
         _, username, password = sys.argv
         create_user(username, password)
-

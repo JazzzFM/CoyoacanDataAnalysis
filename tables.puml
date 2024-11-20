@@ -1,0 +1,60 @@
+@startuml
+entity "Region" as R {
+  * id : int
+  * estado : varchar
+  * municipio : varchar
+  * nombre : varchar
+  * geometría : geometry
+  * fecha_actualizacion : date
+}
+
+entity "UsoSuelo" as US {
+  * id : int
+  * region_id : int
+  * año : int
+  * tipo_uso : varchar
+  * superficie : float
+  * cobertura_vegetal : float
+  * densidad_poblacional : float
+  * fuente_dato : varchar
+}
+
+entity "Demografia" as D {
+  * id : int
+  * region_id : int
+  * año : int
+  * poblacion_total : int
+  * poblacion_masculina : int
+  * poblacion_femenina : int
+  * edad_promedio : float
+  * tasa_mortalidad_infantil : float
+  * fuente_dato : varchar
+}
+
+entity "Economia" as E {
+  * id : int
+  * region_id : int
+  * año : int
+  * ingreso_promedio : float
+  * actividad_economica_principal : varchar
+  * indice_gini : float
+  * tasa_empleo_formal : float
+  * fuente_dato : varchar
+}
+
+entity "Ambiental" as A {
+  * id : int
+  * region_id : int
+  * año : int
+  * indicador_ambiental : varchar
+  * valor : float
+  * emisiones_co2 : float
+  * areas_protegidas : float
+  * fuente_dato : varchar
+}
+
+R ||--o{ US : "region_id"
+R ||--o{ D : "region_id"
+R ||--o{ E : "region_id"
+R ||--o{ A : "region_id"
+@enduml

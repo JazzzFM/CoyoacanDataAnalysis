@@ -1,0 +1,542 @@
+
+docker compose exec app flask create-admin dharmaadmin1
+
+
+Apoyo en el Análisis Exploratorio de Datos para el Proyecto de Coyoacán
+
+Hola, encantado de ayudarte en la etapa de análisis exploratorio de datos para tu proyecto sobre la alcaldía de Coyoacán. A continuación, te proporcionaré una guía paso a paso para importar y organizar los datos georreferenciados en Jupyter Notebooks, así como algunas ideas para comenzar con el análisis.
+1. Preparación del Entorno
+
+Antes de comenzar, asegúrate de tener instaladas las siguientes bibliotecas esenciales para el análisis de datos y geodatos en Python:
+
+pip install pandas geopandas matplotlib seaborn folium
+
+2. Importación de Bibliotecas
+
+import pandas as pd
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import folium
+
+3. Importación y Organización de Datos
+a. Datos de Suelos
+
+Si tienes un archivo shapefile o GeoJSON con la información edafológica:
+
+# Cargar datos geoespaciales de suelos
+soils = gpd.read_file('ruta/a/archivo_suelos.shp')
+
+# Visualizar las primeras filas
+soils.head()
+
+b. Datos Demográficos
+
+Si tus datos demográficos están en formato CSV:
+
+# Cargar datos demográficos
+demographics = pd.read_csv('ruta/a/archivo_demografico.csv')
+
+# Convertir a GeoDataFrame si tienes coordenadas
+demographics_gdf = gpd.GeoDataFrame(
+    demographics, geometry=gpd.points_from_xy(demographics.longitud, demographics.latitud), crs='EPSG:4326')
+
+# Visualizar las primeras filas
+demographics_gdf.head()
+
+c. Datos de Infraestructura
+
+# Cargar datos de infraestructura
+infrastructure = gpd.read_file('ruta/a/archivo_infraestructura.shp')
+
+# Visualizar las primeras filas
+infrastructure.head()
+
+d. Datos Ambientales
+
+# Cargar datos ambientales
+environment = pd.read_csv('ruta/a/archivo_ambiental.csv')
+
+# Visualizar las primeras filas
+environment.head()
+
+4. Análisis Exploratorio de Datos (EDA)
+a. Visualización Geoespacial Básica
+Mapa de Tipos de Suelo
+
+# Plot de tipos de suelo
+soils.plot(column='tipo_suelo', legend=True, figsize=(10, 8))
+plt.title('Tipos de Suelo en Coyoacán')
+plt.show()
+
+b. Análisis Demográfico
+Distribución de la Población
+
+# Histograma de la población
+plt.figure(figsize=(10, 6))
+sns.histplot(demographics['poblacion'], kde=True)
+plt.title('Distribución de la Población en Coyoacán')
+plt.xlabel('Población')
+plt.ylabel('Frecuencia')
+plt.show()
+
+Mapa de Densidad de Población
+
+# Unir datos demográficos con geometrías
+demographics_map = soils.merge(demographics, on='id_colonia')
+
+# Mapa de densidad de población
+demographics_map.plot(column='densidad_poblacion', cmap='OrRd', legend=True, figsize=(10, 8))
+plt.title('Densidad de Población en Coyoacán')
+plt.show()
+
+c. Accesibilidad a Servicios Públicos
+Ubicación de Infraestructura en el Mapa
+
+# Crear un mapa base
+base = soils.plot(color='white', edgecolor='black', figsize=(10, 8))
+
+# Plot de hospitales
+infrastructure[infrastructure['tipo'] == 'hospital'].plot(ax=base, marker='o', color='red', markersize=50, label='Hospitales')
+
+# Plot de escuelas
+infrastructure[infrastructure['tipo'] == 'escuela'].plot(ax=base, marker='^', color='blue', markersize=50, label='Escuelas')
+
+plt.legend()
+plt.title('Ubicación de Hospitales y Escuelas en Coyoacán')
+plt.show()
+
+d. Análisis Ambiental
+Calidad del Aire vs Densidad de Población
+
+# Unir datos ambientales con demográficos
+merged_data = pd.merge(demographics, environment, on='id_colonia')
+
+# Scatter plot
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=merged_data, x='densidad_poblacion', y='indice_calidad_aire')
+plt.title('Calidad del Aire vs Densidad de Población')
+plt.xlabel('Densidad de Población')
+plt.ylabel('Índice de Calidad del Aire')
+plt.show()
+
+e. Exploración de Patrones Electorales
+Integración de Datos Electorales
+
+# Cargar datos electorales
+election = pd.read_csv('ruta/a/archivo_electoral.csv')
+
+# Unir con datos demográficos
+election_data = pd.merge(demographics, election, on='id_colonia')
+
+# Analizar la correlación entre ingreso y porcentaje de votos
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=election_data, x='ingreso_per_capita', y='porcentaje_votos_partido_X')
+plt.title('Ingreso per cápita vs Porcentaje de Votos para Partido X')
+plt.xlabel('Ingreso per cápita')
+plt.ylabel('Porcentaje de Votos')
+plt.show()
+
+5. Identificación de Áreas de Necesidad
+Análisis de Clústeres
+Preparación de Datos
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+
+# Seleccionar variables para el clustering
+variables = ['ingreso_per_capita', 'nivel_educativo', 'acceso_salud']
+X = demographics[variables].dropna()
+
+# Estandarizar las variables
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+Aplicación de K-Means
+
+# Definir el número de clústeres
+kmeans = KMeans(n_clusters=3, random_state=42)
+kmeans.fit(X_scaled)
+
+# Añadir los clústeres al DataFrame
+demographics['cluster'] = kmeans.labels_
+
+# Visualizar los clústeres en el mapa
+demographics_gdf = demographics_gdf.merge(demographics[['id_colonia', 'cluster']], on='id_colonia')
+demographics_gdf.plot(column='cluster', cmap='viridis', legend=True, figsize=(10, 8))
+plt.title('Clústeres Socioeconómicos en Coyoacán')
+plt.show()
+
+6. Visualizaciones Interactivas
+Mapa Interactivo con Folium
+
+# Crear mapa base centrado en Coyoacán
+m = folium.Map(location=[19.3467, -99.1617], zoom_start=13)
+
+# Añadir polígonos de las colonias coloreados por clúster
+folium.Choropleth(
+    geo_data=demographics_gdf,
+    data=demographics_gdf,
+    columns=['id_colonia', 'cluster'],
+    key_on='feature.properties.id_colonia',
+    fill_color='YlOrRd',
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name='Clúster Socioeconómico'
+).add_to(m)
+
+# Mostrar mapa
+m
+
+7. Próximos Pasos
+
+    Limpieza y Validación de Datos: Verifica la calidad de los datos y maneja los valores faltantes o atípicos.
+    Análisis Estadísticos Avanzados: Considera modelos de regresión o análisis espacial para profundizar en las relaciones encontradas.
+    Integración de Más Datos: Incorpora otros datos relevantes como índices de delincuencia o satisfacción ciudadana.
+    Formulación de Recomendaciones: Basándote en los hallazgos, comienza a esbozar propuestas de políticas públicas.
+
+
+
+
+
+Entiende estos codigos y refactorizalos, busca como generalizarlos para optimizar mejor los recursos de meoria y hacer una inenieria de datos antes de pintarlos, es decir busca en que ppunto podemos usar datos limpios que permitan pintar los mapas y realizar distintos analisis con los dataframes,
+haz funciones que generalicen estos scripts. Actua como un experto en desarrollo de software que busca mejorar estos codigos, da sugerencias de como manejar mejor los datos evimplementemoslo:
+
+
+
+import geopandas as gpd
+import folium
+import numpy as np
+from shapely.geometry import Polygon, MultiPolygon, GeometryCollection
+from shapely.ops import transform
+from pyproj import CRS, Transformer
+
+# Definir la ruta base de los datos
+base_path = "~/Documentos/CoyoacanDataAnalysis/data/"
+
+# Paso 1: Cargar shapefiles de datos demográficos
+print("Cargando datos demográficos...")
+hombres_shp = f"{base_path}/demografico/2020/hombres.shp"
+mujeres_shp = f"{base_path}/demografico/2020/mujeres.shp"
+total_shp = f"{base_path}/demografico/2020/total.shp"
+
+gdf_hombres = gpd.read_file(hombres_shp)
+gdf_mujeres = gpd.read_file(mujeres_shp)
+gdf_total = gpd.read_file(total_shp)
+
+# Paso 2: Cargar el shapefile de límites de alcaldías y filtrar Coyoacán
+print("\nCargando y filtrando los límites de Coyoacán...")
+alcaldias_shp = f"{base_path}/limites/poligonos_alcaldias_cdmx.shp"
+gdf_alcaldias = gpd.read_file(alcaldias_shp)
+gdf_coyoacan = gdf_alcaldias[gdf_alcaldias['NOMGEO'] == 'Coyoacán']
+
+# Paso 3: Filtrar los datos demográficos para Coyoacán
+print("\nFiltrando datos demográficos para Coyoacán...")
+gdf_total_coyoacan = gpd.clip(gdf_total, gdf_coyoacan)
+
+# Paso 4: Reproyectar a un CRS adecuado para cálculos métricos
+print("\nReproyectando los datos al CRS EPSG:32614 (UTM Zona 14N)...")
+projected_crs = "EPSG:32614"
+gdf_total_coyoacan = gdf_total_coyoacan.to_crs(projected_crs)
+
+# Paso 5: Calcular área en km² y densidad de población
+print("\nCalculando área y densidad de población...")
+gdf_total_coyoacan['area_km2'] = gdf_total_coyoacan.geometry.area / 10**6  # Convertir m² a km²
+gdf_total_coyoacan['area_km2'] = gdf_total_coyoacan['area_km2'].replace(0, np.nan)  # Reemplazar áreas 0 con NaN
+gdf_total_coyoacan['densidad_pob'] = gdf_total_coyoacan['pob'] / gdf_total_coyoacan['area_km2']
+gdf_total_coyoacan['densidad_pob'] = gdf_total_coyoacan['densidad_pob'].fillna(0)  # Llenar NaNs en densidad de población
+
+# Paso 6: Filtrar geometrías no soportadas antes de convertir a polígonos
+print("\nFiltrando geometrías inválidas y no soportadas...")
+gdf_total_coyoacan = gdf_total_coyoacan[gdf_total_coyoacan.geometry.type.isin(['Polygon', 'MultiPolygon'])]
+
+# Paso 7: Función mejorada para convertir a Polygon
+def to_polygon(geometry):
+    """Convierte MultiPolygon y GeometryCollection a un solo Polygon si es posible."""
+    try:
+        if isinstance(geometry, Polygon):
+            return geometry
+        elif isinstance(geometry, MultiPolygon):
+            return max(geometry, key=lambda a: a.area)  # Tomar el mayor polígono
+        elif isinstance(geometry, GeometryCollection):
+            polygons = [geom for geom in geometry.geoms if isinstance(geom, Polygon)]
+            if polygons:
+                return max(polygons, key=lambda a: a.area)
+            else:
+                print("Advertencia: GeometryCollection sin polígonos, se omitirá.")
+                return None
+        else:
+            return None
+    except Exception as e:
+        print(f"Error procesando geometría: {e}")
+        return None
+
+print("\nConvirtiendo geometrías complejas a Polygon...")
+gdf_total_coyoacan['geometry'] = gdf_total_coyoacan['geometry'].apply(to_polygon)
+
+# Filtrar registros sin geometría válida después de la conversión
+gdf_total_coyoacan = gdf_total_coyoacan[~gdf_total_coyoacan['geometry'].isnull()]
+
+# Paso 8: Reproyectar a WGS84 para mostrar en Folium
+print("\nReproyectando los datos al CRS WGS84 para visualización en Folium...")
+gdf_total_coyoacan = gdf_total_coyoacan.to_crs("EPSG:4326")
+
+# Verificación de densidad de población calculada y geometrías
+print("\nDatos de densidad de población calculada:")
+print(gdf_total_coyoacan[['ageb', 'pob', 'area_km2', 'densidad_pob']].describe())
+
+# Cálculo del centro de Coyoacán para el mapa en WGS84
+centro_lat = gdf_total_coyoacan.geometry.centroid.y.mean()
+centro_lon = gdf_total_coyoacan.geometry.centroid.x.mean()
+
+# Paso 9: Crear un mapa de Folium y añadir la capa de densidad de población
+print("\nCreando el mapa de densidad de población...")
+m = folium.Map(location=[centro_lat, centro_lon], zoom_start=13)
+
+# Crear capa coroplética
+folium.Choropleth(
+    geo_data=gdf_total_coyoacan,
+    data=gdf_total_coyoacan,
+    columns=['ageb', 'densidad_pob'],
+    key_on='feature.properties.ageb',
+    fill_color='YlOrRd',
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name='Densidad de Población (hab/km²)'
+).add_to(m)
+
+# Añadir tooltips con información adicional
+tooltip = folium.GeoJsonTooltip(
+    fields=['ageb', 'pob', 'densidad_pob'],
+    aliases=['AGEB:', 'Población:', 'Densidad de Población (hab/km²):']
+)
+
+# Añadir los polígonos al mapa con tooltip
+folium.GeoJson(
+    gdf_total_coyoacan,
+    tooltip=tooltip
+).add_to(m)
+
+print("Mapa creado. Si estás en un notebook, el mapa debería aparecer a continuación.")
+m
+
+
+import geopandas as gpd
+import pandas as pd
+import folium
+import matplotlib.pyplot as plt
+
+# Ruta de datos
+data_path = "~/Documentos/CoyoacanDataAnalysis/data/demografico/2020/"
+
+# Paso 1: Cargar datos geográficos y demográficos
+print("Cargando datos de población total...")
+gdf_total = gpd.read_file(f"{data_path}total.shp")
+print("Cargando datos de población masculina...")
+gdf_hombres = gpd.read_file(f"{data_path}hombres.shp")
+print("Cargando datos de población femenina...")
+gdf_mujeres = gpd.read_file(f"{data_path}mujeres.shp")
+
+# Verificar estructura de datos
+print("\nEstructura de gdf_total:")
+print(gdf_total.head())
+print("\nEstructura de gdf_hombres:")
+print(gdf_hombres.head())
+print("\nEstructura de gdf_mujeres:")
+print(gdf_mujeres.head())
+
+# Paso 2: Revisar y renombrar columnas para unificación
+gdf_total = gdf_total.rename(columns={'pob': 'pob_total'})
+gdf_hombres = gdf_hombres.rename(columns={'pob': 'pob_hombres'})
+gdf_mujeres = gdf_mujeres.rename(columns={'pob': 'pob_mujeres'})
+
+# Paso 3: Unir datos de población por género al total
+print("\nUniendo datos de población por género con el total...")
+gdf_total = gdf_total.merge(gdf_hombres[['ageb', 'pob_hombres']], on='ageb', how='left')
+gdf_total = gdf_total.merge(gdf_mujeres[['ageb', 'pob_mujeres']], on='ageb', how='left')
+
+# Verificar unificación de datos
+print("\nDatos después de la unión:")
+print(gdf_total[['ageb', 'pob_total', 'pob_hombres', 'pob_mujeres']].head())
+
+# Paso 4: Cargar y unir los límites de Coyoacán
+print("Cargando límites de Coyoacán...")
+limites_coyoacan = gpd.read_file("~/Documentos/CoyoacanDataAnalysis/data/limites/poligonos_alcaldias_cdmx.shp")
+limites_coyoacan = limites_coyoacan[limites_coyoacan['NOMGEO'] == 'Coyoacán']
+
+# Filtrar datos de Coyoacán
+print("Filtrando datos demográficos para Coyoacán...")
+gdf_total = gpd.sjoin(gdf_total, limites_coyoacan, predicate='within')
+print("\nDatos filtrados para Coyoacán:")
+print(gdf_total.head())
+
+# Paso 5: Reproyectar a un sistema métrico para calcular área
+print("Reproyectando los datos al CRS EPSG:32614 (UTM Zona 14N)...")
+gdf_total = gdf_total.to_crs(epsg=32614)
+
+# Calcular área y densidad de población
+print("Calculando área y densidad de población...")
+gdf_total['area_km2'] = gdf_total.geometry.area / 10**6  # área en km²
+gdf_total['densidad_pob_total'] = gdf_total['pob_total'] / gdf_total['area_km2']
+gdf_total['densidad_hombres'] = gdf_total['pob_hombres'] / gdf_total['area_km2']
+gdf_total['densidad_mujeres'] = gdf_total['pob_mujeres'] / gdf_total['area_km2']
+
+# Paso 6: Verificar resultados de densidad
+print("\nDatos de densidad de población calculada:")
+print(gdf_total[['ageb', 'pob_total', 'area_km2', 'densidad_pob_total', 'densidad_hombres', 'densidad_mujeres']].describe())
+
+# Paso 7: Reproyectar a WGS84 para visualización en Folium
+print("Reproyectando los datos al CRS WGS84 para visualización en Folium...")
+gdf_total = gdf_total.to_crs(epsg=4326)
+
+# Paso 8: Crear mapas de densidad de población
+
+# Mapa de densidad de población total
+print("Creando el mapa de densidad de población total...")
+m_total = folium.Map(location=[19.3467, -99.1617], zoom_start=12)
+folium.Choropleth(
+    geo_data=gdf_total,
+    data=gdf_total,
+    columns=['ageb', 'densidad_pob_total'],
+    key_on='feature.properties.ageb',
+    fill_color='YlOrRd',
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name='Densidad de Población Total (hab/km²)'
+).add_to(m_total)
+
+# Mapa de densidad de hombres
+print("Creando el mapa de densidad de población masculina...")
+m_hombres = folium.Map(location=[19.3467, -99.1617], zoom_start=12)
+folium.Choropleth(
+    geo_data=gdf_total,
+    data=gdf_total,
+    columns=['ageb', 'densidad_hombres'],
+    key_on='feature.properties.ageb',
+    fill_color='Blues',
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name='Densidad de Población de Hombres (hab/km²)'
+).add_to(m_hombres)
+
+# Mapa de densidad de mujeres
+print("Creando el mapa de densidad de población femenina...")
+m_mujeres = folium.Map(location=[19.3467, -99.1617], zoom_start=12)
+folium.Choropleth(
+    geo_data=gdf_total,
+    data=gdf_total,
+    columns=['ageb', 'densidad_mujeres'],
+    key_on='feature.properties.ageb',
+    fill_color='Purples',
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name='Densidad de Población de Mujeres (hab/km²)'
+).add_to(m_mujeres)
+
+# Mostrar mapas
+print("Mapas creados. Si estás en un notebook, deberían aparecer a continuación.")
+m_total.save("densidad_poblacion_total.html")
+m_hombres.save("densidad_poblacion_hombres.html")
+m_mujeres.save("densidad_poblacion_mujeres.html")
+
+print("\nMapas guardados como archivos HTML.")%          
+
+
+
+6. Explicación del Diagrama UML
+a. Bases de Datos y Tablas
+
+    Poligonos
+        Municipio
+            id_municipio: Identificador único del municipio (PK).
+            nombre_municipio: Nombre del municipio.
+            geometry: Geometría del polígono del municipio.
+        Colonia
+            id_colonia: Identificador único de la colonia (PK).
+            nombre_colonia: Nombre de la colonia.
+            id_municipio: Referencia al municipio al que pertenece (FK).
+            geometry: Geometría del polígono de la colonia.
+        AGEB
+            id_ageb: Identificador único de la AGEB (PK).
+            id_colonia: Referencia a la colonia a la que pertenece (FK).
+            geometry: Geometría del polígono de la AGEB.
+        Manzana
+            id_manzana: Identificador único de la manzana (PK).
+            id_ageb: Referencia a la AGEB a la que pertenece (FK).
+            geometry: Geometría del polígono de la manzana.
+
+    Demografia_Economia
+        Demografia
+            id_demografia: Identificador único del registro demográfico (PK).
+            id_manzana: Referencia a la manzana (FK).
+            anio: Año del registro.
+            poblacion: Población total.
+            ingresos: Ingresos promedio.
+            tasa_empleo: Tasa de empleo.
+        Indicadores_Economicos
+            id_indicador_economico: Identificador único del indicador económico (PK).
+            id_manzana: Referencia a la manzana (FK).
+            anio: Año del registro.
+            pib_per_capita: PIB per cápita.
+            tasa_desempleo: Tasa de desempleo.
+
+    Accesibilidad_Servicios_Publicos
+        Servicios_Salud
+            id_servicio_salud: Identificador único del servicio de salud (PK).
+            id_manzana: Referencia a la manzana (FK).
+            anio: Año del registro.
+            numero_centros_salud: Número de centros de salud.
+            distancia_promedio_centros_salud: Distancia promedio a los centros de salud.
+        Servicios_Educacion
+            id_servicio_educacion: Identificador único del servicio de educación (PK).
+            id_manzana: Referencia a la manzana (FK).
+            anio: Año del registro.
+            numero_escolas: Número de escuelas.
+            distancia_promedio_escolas: Distancia promedio a las escuelas.
+        Servicios_Transporte
+            id_servicio_transporte: Identificador único del servicio de transporte (PK).
+            id_manzana: Referencia a la manzana (FK).
+            anio: Año del registro.
+            numero_paradas_transporte: Número de paradas de transporte público.
+            distancia_promedio_paradas: Distancia promedio a las paradas de transporte.
+
+    Calidad_Ambiental
+        Calidad_Aire
+            id_calidad_aire: Identificador único del registro de calidad del aire (PK).
+            id_manzana: Referencia a la manzana (FK).
+            anio: Año del registro.
+            nivel_pm25: Nivel de PM2.5.
+            nivel_no2: Nivel de NO2.
+        Areas_Verdes
+            id_area_verde: Identificador único del área verde (PK).
+            id_manzana: Referencia a la manzana (FK).
+            anio: Año del registro.
+            area_total_verde_sqm: Área total verde en metros cuadrados.
+            numero_parques: Número de parques.
+
+    Patrones_Electorales
+        Resultados_Electorales
+            id_resultado_electoral: Identificador único del resultado electoral (PK).
+            id_manzana: Referencia a la manzana (FK).
+            anio: Año del registro.
+            votos_candidato_a: Votos para el candidato A.
+            votos_candidato_b: Votos para el candidato B.
+            votos_totales: Votos totales.
+
+b. Relaciones entre Tablas
+
+    Jerarquía Geográfica en Poligonos:
+        Municipio contiene múltiples Colonias.
+        Colonia contiene múltiples AGEBs.
+        AGEB contiene múltiples Manzanas.
+
+    Relaciones de Análisis:
+        Cada Manzana puede tener múltiples registros en las tablas de análisis (Demografia, Indicadores_Economicos, Servicios_Salud, etc.) para diferentes años.
+        Dado que las bases de datos están separadas, las relaciones de claves foráneas (FK) no se pueden implementar directamente entre bases de datos. Por lo tanto, se recomienda mantener la consistencia de los id_manzana a través de todos los registros y validar la integridad de los datos durante la inserción.
+
+7. Recomendaciones para la Implementación
+a. Creación de las Bases de Datos y Tablas en PostGIS
+
+Para cada base de datos, sigue estos pasos:
+
+    Crear la Base de Datos con Extensión PostGIS:
