@@ -7,7 +7,8 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="geopandas")
 
 # Configuración del motor de la base de datos
-engine = create_engine('postgresql://postgres:MelonSK998@localhost:5432/Poligonos')
+# Asegúrate de reemplazar 'your_password' con tu contraseña real
+engine = create_engine('postgresql://postgres:your_password@localhost:5432/Poligonos')
 
 def cargar_tabla(nombre_tabla):
     """
@@ -38,6 +39,78 @@ def load_data(file_path):
     gdf["id_ageb"] = gdf["ageb"].str[-4:]
 
     return gdf
+
+def load_land_use_data():
+    """
+    Carga y procesa los datos de uso de suelo y los integra con las manzanas de Coyoacán.
+    """
+    try:
+        # Cargar manzanas
+        manzanas_shp = '../data/manzanas/090030001m.shp'
+        gdf_manzanas = gpd.read_file(manzanas_shp)[['IDENTIFICA', 'geometry']]
+
+        # Cargar polígono de Coyoacán
+        coyoacan_polygon = gpd.read_file('../data/limites/poligonos_alcaldias_cdmx.shp')
+        coyoacan_polygon = coyoacan_polygon[coyoacan_polygon['NOMGEO'] == 'Coyoacán']
+
+        # Cargar uso de suelo
+        shapefile_path = '../data/uso_suelo/uso-de-suelo.shp'
+        gdf_uso_suelo = gpd.read_file(shapefile_path, encoding='latin1')[['us_dscr', 'geometry']]
+
+        # Eliminar registros con NaN en 'us_dscr'
+        gdf_uso_suelo = gdf_uso_suelo.dropna(subset=['us_dscr'])
+
+        # Alinear CRS
+        common_crs = coyoacan_polygon.crs
+        gdf_manzanas = convert_crs(gdf_manzanas, common_crs)
+        gdf_uso_suelo = convert_crs(gdf_uso_suelo, common_crs)
+
+        # Recortar al área de Coyoacán
+        gdf_manzanas_coyoacan = gpd.clip(gdf_manzanas, coyoacan_polygon)
+        gdf_uso_suelo_coyoacan = gpd.clip(gdf_uso_suelo, coyoacan_polygon)
+
+        # Unión espacial para asignar uso de suelo a manzanas
+        gdf_union = spatial_join(
+            gdf_left=gdf_manzanas_coyoacan,
+            gdf_right=gdf_uso_suelo_coyoacan,
+            how='left',
+            predicate='intersects',
+            lsuffix='manzana',
+            rsuffix='uso_suelo'
+        )
+
+        # Eliminar filas con NaN en 'us_dscr' después de la unión
+        gdf_union = gdf_union.dropna(subset=['us_dscr'])
+
+        # Determinar uso de suelo predominante por manzana
+        uso_suelo_por_manzana = gdf_union.groupby(['IDENTIFICA', 'us_dscr'])\
+                                         .size()\
+                                         .reset_index(name='counts')
+
+        uso_suelo_predominante = uso_suelo_por_manzana.sort_values('counts', ascending=False)\
+                                                      .drop_duplicates('IDENTIFICA')
+
+        # Unir el uso de suelo predominante a las manzanas
+        gdf_manzanas_coyoacan = gdf_manzanas_coyoacan.merge(
+            uso_suelo_predominante[['IDENTIFICA', 'us_dscr']],
+            on='IDENTIFICA',
+            how='left'
+        )
+
+        # Asignar 'Sin Datos' a manzanas sin información de uso de suelo
+        gdf_manzanas_coyoacan['us_dscr'] = gdf_manzanas_coyoacan['us_dscr'].fillna('Sin Datos')
+
+        # Simplificar geometrías (opcional)
+        gdf_manzanas_coyoacan['geometry'] = gdf_manzanas_coyoacan['geometry'].simplify(
+            tolerance=0.0001, preserve_topology=True
+        )
+
+        print("[INFO] Datos de uso de suelo cargados y procesados exitosamente.")
+        return gdf_manzanas_coyoacan
+
+    except Exception as e:
+        print(f"[ERROR] Error al cargar y procesar datos de uso de suelo: {e}")
+        raise e
 
 def load_static_data():
     """
@@ -70,6 +143,9 @@ def load_static_data():
         )
         print("[INFO] Unión espacial entre AGEB y manzanas completada.")
 
+        # Eliminar columnas de índice generadas automáticamente
+        ageb_to_manzanas = ageb_to_manzanas.drop(columns=['index_ageb', 'index_manzana'], errors='ignore')
+
         # Combinar datos demográficos con las manzanas
         datos_con_manzanas = ageb_to_manzanas.merge(
             datos_demograficos,
@@ -94,6 +170,12 @@ def load_static_data():
             "ageb": datos_con_manzanas,
             "colonia": datos_con_colonias
         }
+
+        # Cargar y procesar datos de uso de suelo
+        gdf_uso_suelo_manzanas = load_land_use_data()
+
+        # Añadir los datos de uso de suelo al diccionario de datos
+        datos['uso_suelo'] = gdf_uso_suelo_manzanas
 
         # Mostrar información de las tablas cargadas
         for nombre, gdf in datos.items():
@@ -123,7 +205,6 @@ def validate_geometries(gdf):
     else:
         print("[VALIDACIÓN GEOMETRÍAS] Todas las geometrías son válidas")
 
-# Nueva función para convertir CRS
 def convert_crs(gdf, crs_target):
     if gdf.crs != crs_target:
         print(f"[DATA LOADER] Reproyectando a {crs_target}...")
@@ -131,14 +212,13 @@ def convert_crs(gdf, crs_target):
         print("[DATA LOADER] Reproyección completada.")
     return gdf
 
-# Nueva función para realizar uniones espaciales
 def spatial_join(gdf_left, gdf_right, how="inner", predicate="intersects", lsuffix='left', rsuffix='right'):
     gdf_joined = gpd.sjoin(
-        gdf_left, 
-        gdf_right, 
-        how=how, 
+        gdf_left,
+        gdf_right,
+        how=how,
         predicate=predicate,
-        lsuffix=lsuffix, 
+        lsuffix=lsuffix,
         rsuffix=rsuffix
     )
     # Eliminar columnas de índice generadas automáticamente

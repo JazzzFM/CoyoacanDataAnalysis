@@ -1,11 +1,9 @@
-# dashboard_app.py
-
 import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, dcc, html
 from data_loader import load_static_data, validate_geometries
 from data_processor import DataProcessor
-from figures_utils import create_choropleth
+from figures_utils import create_choropleth, create_edafologia_map
 import geopandas as gpd
 
 class DashboardApp:
@@ -80,7 +78,7 @@ class DashboardApp:
             elif pathname == "/page-1":
                 return self.create_demographic_dashboard()
             elif pathname == "/page-2":
-                return html.P("Esta es la página de análisis edafológico.")
+                return self.create_edafologia_dashboard()
             # Si el usuario intenta acceder a una página no definida
             return html.Div(
                 [
@@ -115,7 +113,32 @@ class DashboardApp:
                 print(f"[CALLBACK ERROR] Error al actualizar el mapa: {e}")
                 return create_choropleth(gpd.GeoDataFrame(), None, "Error al generar el mapa", nivel_granularidad)
 
-    # Nueva función para crear el dashboard demográfico
+        # Callback para el mapa de edafología
+        @self.app.callback(
+            Output("mapa-edafologia", "figure"),
+            [Input("tipo-uso-suelo", "value")]
+        )
+        def actualizar_mapa_edafologia(tipos_uso_suelo_seleccionados):
+            try:
+                df = self.datos['uso_suelo']
+                if df.empty:
+                    print("[ERROR] No se encontraron datos de uso de suelo.")
+                    return {}
+                # Filtrar por tipos de uso de suelo seleccionados
+                if tipos_uso_suelo_seleccionados:
+                    df = df[df['us_dscr'].isin(tipos_uso_suelo_seleccionados)]
+                else:
+                    print("[INFO] No se seleccionaron tipos de uso de suelo.")
+                    return {}
+                print(f"[INFO] Generando mapa de edafología para tipos de uso de suelo: {tipos_uso_suelo_seleccionados}")
+                # Crear el mapa interactivo
+                fig = create_edafologia_map(df)
+                return fig
+            except Exception as e:
+                print(f"[CALLBACK ERROR] Error al actualizar el mapa de edafología: {e}")
+                return {}
+
+    # Función para crear el dashboard demográfico
     def create_demographic_dashboard(self):
         # Obtener las métricas y años disponibles
         metricas_disponibles = self.get_metric_options()
@@ -128,7 +151,19 @@ class DashboardApp:
             dcc.Graph(id="mapa-interactivo")
         ])
 
-    # Nueva función para crear la fila de filtros
+    # Función para crear el filtro de edafología
+    def create_edafologia_dashboard(self):
+        # Obtener los tipos de uso de suelo disponibles
+        tipos_uso_suelo = self.datos['uso_suelo']['us_dscr'].unique()
+        tipos_uso_suelo = sorted(tipos_uso_suelo)
+
+        return html.Div([
+            html.H3("Dashboard Edafológico"),
+            self.create_edafologia_filter(tipos_uso_suelo),
+            # Contenedor para el mapa
+            dcc.Graph(id="mapa-edafologia")
+        ])
+
     def create_filter_row(self, metricas_disponibles, anios_disponibles):
         return html.Div([
             # Selector de año
@@ -167,6 +202,21 @@ class DashboardApp:
                     style={"width": "100%"}
                 )
             ], style={"width": "20%", "display": "inline-block", "verticalAlign": "top"})
+        ], style={"display": "flex", "flexDirection": "row"})
+
+    def create_edafologia_filter(self, tipos_uso_suelo):
+        return html.Div([
+            # Selector de tipo de uso de suelo
+            html.Div([
+                html.Label("Tipo de Uso de Suelo:"),
+                dcc.Dropdown(
+                    id="tipo-uso-suelo",
+                    options=[{"label": uso, "value": uso} for uso in tipos_uso_suelo],
+                    value=tipos_uso_suelo,  # Seleccionar todos por defecto
+                    multi=True,
+                    style={"width": "100%"}
+                )
+            ], style={"width": "50%", "display": "inline-block", "verticalAlign": "top"})
         ], style={"display": "flex", "flexDirection": "row"})
 
     # Nueva función para obtener las métricas disponibles
