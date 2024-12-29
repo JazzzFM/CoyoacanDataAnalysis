@@ -1,110 +1,44 @@
-# figures_utils.py
-
+from dataclasses import dataclass
+from typing import Dict, Optional
+import geopandas as gpd
 import plotly.express as px
+import logging
 
-def create_choropleth(gdf, metric_column, title, nivel_granularidad, color_scale="YlOrRd"):
-    print(f"[FIGURE UTILS] Generando mapa para métrica: {metric_column}")
+logger = logging.getLogger(__name__)
 
-    if gdf.empty or metric_column not in gdf.columns:
-        print("[FIGURE UTILS ERROR] DataFrame vacío o métrica no definida. No se puede generar el mapa.")
-        return {}
-
-    # Mapear identificador según el nivel de granularidad
-    id_column = {
-        "manzana": "id_manzana",
-        "ageb": "id_ageb",
-        "colonia": "id_colonia"
-    }.get(nivel_granularidad, None)
-
-    if id_column not in gdf.columns:
-        print(f"[FIGURE UTILS ERROR] La columna '{id_column}' no existe en el DataFrame.")
-        return {}
-
-    # Restablecer índice y crear columna 'id' si es necesario
-    gdf = gdf.reset_index(drop=True)
-    gdf['id'] = gdf[id_column].astype(str)
-
-    # Convertir geometría a GeoJSON
-    geojson = gdf.set_index('id')['geometry'].__geo_interface__
-
-    # Configurar escalas de colores específicas para cada métrica
-    color_scales = {
-        "pob_total": "YlOrRd",
-        "densidad_pob_total": "YlOrRd",
-        "densidad_hombres": "Blues",
-        "densidad_mujeres": "Purples",
-        "dependencia_infantil": "Greens",
-        "relacion_genero": "RdYlBu",
-        "tasa_alfabetizacion": "YlGnBu",
-    }
-    color_scale = color_scales.get(metric_column, "Viridis")
-
-    try:
-        fig = px.choropleth_mapbox(
-            gdf,
-            geojson=geojson,
-            locations='id',
-            color=metric_column,
-            color_continuous_scale=color_scale,
-            title=title,
-            hover_data={
-                metric_column: ":.2f",  # Métrica seleccionada
-            },
-            mapbox_style="carto-positron",
-            center={"lat": 19.34, "lon": -99.16},
-            zoom=12,
-        )
-        # Configurar el layout
-        fig.update_layout(
-            autosize=True,
-            margin={"r": 0, "t": 50, "l": 0, "b": 0},
-            coloraxis_colorbar={"title": metric_column.capitalize()}
-        )
-        print("[FIGURE UTILS SUCCESS] Mapa generado correctamente.")
-        return fig
-    except Exception as e:
-        print(f"[FIGURE UTILS ERROR] Error al crear el mapa: {e}")
-        return {}
-
-def create_edafologia_map(gdf):
+@dataclass
+class MapConfig:
     """
-    Genera un mapa interactivo de uso de suelo utilizando Plotly Express.
+    Configuración para generar mapas coropléticos.
     """
-    print("[FIGURE UTILS] Generando mapa de edafología.")
+    titulo: str
+    columna_metrica: str
+    esquema_color: str = "Viridis"
 
-    # Asegurarnos de que hay datos para graficar
-    if gdf.empty:
-        print("[FIGURE UTILS ERROR] No hay datos para generar el mapa de edafología.")
-        return {}
+class FiguresUtils:
+    @staticmethod
+    def generar_mapa_coropletico(
+        data: gpd.GeoDataFrame, config: MapConfig
+    ) -> Optional[px.choropleth]:
+        """
+        Genera un mapa coroplético basado en los datos y configuración.
+        """
+        try:
+            if config.columna_metrica not in data.columns:
+                logger.error(f"La columna métrica '{config.columna_metrica}' no está en los datos.")
+                return None
 
-    # Crear una copia del GeoDataFrame para evitar modificaciones no deseadas
-    gdf = gdf.copy()
-
-    # Crear un identificador único para cada geometría
-    gdf['id'] = gdf.index.astype(str)
-
-    # Convertir geometría a GeoJSON
-    geojson = gdf.set_index('id')['geometry'].__geo_interface__
-
-    # Crear el mapa
-    fig = px.choropleth_mapbox(
-        gdf,
-        geojson=geojson,
-        locations='id',
-        color='us_dscr',
-        title='Uso de Suelo en Coyoacán',
-        hover_data={'us_dscr': True},
-        category_orders={'us_dscr': sorted(gdf['us_dscr'].unique())},
-        mapbox_style="carto-positron",
-        center={"lat": 19.34, "lon": -99.16},
-        zoom=12,
-    )
-
-    # Actualizar el layout
-    fig.update_layout(
-        margin={"r": 0, "t": 50, "l": 0, "b": 0},
-        legend_title_text='Uso de Suelo',
-    )
-
-    print("[FIGURE UTILS SUCCESS] Mapa de edafología generado correctamente.")
-    return fig
+            fig = px.choropleth(
+                data,
+                geojson=data.geometry,
+                locations=data.index,
+                color=config.columna_metrica,
+                title=config.titulo,
+                color_continuous_scale=config.esquema_color,
+            )
+            fig.update_geos(fitbounds="locations", visible=False)
+            logger.info("Mapa coroplético generado exitosamente.")
+            return fig
+        except Exception as e:
+            logger.error(f"Error al generar mapa coroplético: {e}")
+            return None

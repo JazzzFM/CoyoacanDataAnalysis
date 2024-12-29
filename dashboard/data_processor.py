@@ -1,40 +1,61 @@
-# data_processor.py
-
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
+import pandas as pd
 import geopandas as gpd
+import logging
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class ProcessingConfig:
+    """
+    Configuración para procesamiento de datos.
+    """
+    nivel_granularidad: str
+    filtro_anio: Optional[int] = None
+    columna_metrica: Optional[str] = None
 
 class DataProcessor:
     @staticmethod
-    def procesar_datos(df, nivel_granularidad, metricas):
+    def procesar_datos(
+        data: gpd.GeoDataFrame,
+        config: ProcessingConfig
+    ) -> Optional[gpd.GeoDataFrame]:
         """
-        Agrupa y procesa los datos según el nivel de granularidad y las métricas seleccionadas.
-
-        Args:
-            df (GeoDataFrame): DataFrame con los datos geoespaciales.
-            nivel_granularidad (str): Nivel de granularidad ('manzana', 'ageb', 'colonia').
-            metricas (list): Lista de métricas a calcular. Ejemplo: ['pob_total', 'densidad_pob_total'].
-
-        Returns:
-            GeoDataFrame: DataFrame procesado con las métricas agregadas por nivel de granularidad.
+        Procesa los datos basándose en configuración específica.
         """
-        niveles = {
-            "manzana": "id_manzana",
-            "ageb": "id_ageb",
-            "colonia": "id_colonia"
-        }
+        try:
+            # Filtrar por año si se especifica
+            if config.filtro_anio:
+                data = data[data["anio"] == config.filtro_anio]
+                logger.info(f"Datos filtrados para el año {config.filtro_anio}: {len(data)} registros.")
 
-        if nivel_granularidad not in niveles:
-            raise ValueError(f"Nivel de granularidad no válido. Debe ser uno de: {list(niveles.keys())}")
+            # Selección de columna métrica si se especifica
+            if config.columna_metrica and config.columna_metrica in data.columns:
+                data = data[["geometry", config.columna_metrica]].copy()
+                logger.info(f"Seleccionando columna métrica: {config.columna_metrica}.")
+            else:
+                logger.warning(f"La columna métrica '{config.columna_metrica}' no está presente.")
 
-        columna_grupo = niveles[nivel_granularidad]
+            return data
+        except Exception as e:
+            logger.error(f"Error al procesar datos: {e}")
+            return None
 
-        # Verificar que la columna de agrupación existe en el DataFrame
-        if columna_grupo not in df.columns:
-            raise KeyError(f"La columna '{columna_grupo}' no existe en el DataFrame.")
-
-        # Agrupar y calcular métricas
-        datos_procesados = df.groupby(columna_grupo).agg({
-            "geometry": "first",  # Mantener la geometría
-            **{metrica: "sum" for metrica in metricas}  # Calcular suma para las métricas
-        }).reset_index()
-
-        return gpd.GeoDataFrame(datos_procesados, geometry="geometry")
+    @staticmethod
+    def agregar_metrica_personalizada(
+        data: gpd.GeoDataFrame, columna_base: str, nueva_columna: str, funcion: Any
+    ) -> gpd.GeoDataFrame:
+        """
+        Agrega una métrica personalizada calculada con una función proporcionada.
+        """
+        try:
+            if columna_base in data.columns:
+                data[nueva_columna] = data[columna_base].apply(funcion)
+                logger.info(f"Nueva columna '{nueva_columna}' agregada con base en '{columna_base}'.")
+            else:
+                logger.warning(f"La columna base '{columna_base}' no está disponible.")
+            return data
+        except Exception as e:
+            logger.error(f"Error al agregar métrica personalizada: {e}")
+            return data
