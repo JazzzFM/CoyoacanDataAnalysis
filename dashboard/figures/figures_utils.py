@@ -37,17 +37,21 @@ class FiguresGenerator:
 
         # Crear el mapa coroplético
         fig = px.choropleth_mapbox(
-            data_frame=data,
-            geojson=data.__geo_interface__,
-            locations=data.index,
-            color=config.columna_metrica,
-            mapbox_style=config.mapbox_style,  # Usar el estilo configurado
-            zoom=config.zoom,
-            center = {"lat": config.latitud_centro, "lon": config.longitud_centro},
-            color_continuous_scale=config.esquema_color,
+            data_frame = data,
+            geojson = data.__geo_interface__,
+            locations = data.index,
+            color = config.columna_metrica,
+            mapbox_style = config.mapbox_style,  # Usar el estilo configurado
+            zoom = config.zoom,
+            center = {"lat": config.latitud_centro, 
+                      "lon": config.longitud_centro},
+            color_continuous_scale = config.esquema_color,
             opacity = 0.7,  # Ajustar la opacidad para mejor visibilidad
-            #hover_name = config.nombre_hover if config.nombre_hover else config.columna_metrica,
-            #hover_data = {col: True for col in config.hover_columns}  # Mostrar columnas adicionales en el hover
+            hover_name = config.nombre_hover \
+                            if config.nombre_hover \
+                                else config.columna_metrica,
+            hover_data = {col: True \
+                          for col in config.hover_columns}  # Mostrar columnas adicionales en el hover
         )
 
         # Actualizar el layout para mejorar el aspecto
@@ -59,21 +63,19 @@ class FiguresGenerator:
                 'xanchor': 'center',
                 'yanchor': 'top'
             },
-            margin={"r":0,"t":50,"l":0,"b":0},
-            coloraxis_colorbar=dict(
-                title=config.titulo_colorbar if config.titulo_colorbar else config.columna_metrica,
-                titleside='right',
-                ticks='outside',
-                lenmode='fraction',
-                len=0.75,
-                y=0.5
+            margin={"r":0, "t":50, "l":0, "b":0},
+            coloraxis_colorbar = dict(
+                title = config.titulo_colorbar \
+                        if config.titulo_colorbar \
+                        else config.columna_metrica,
+                titleside = 'right',
+                ticks = 'outside',
+                lenmode ='fraction',
+                len = 0.75,
+                y = 0.5
             )
         )
 
-        # Personalizar los tooltips con formato
-        #fig.update_traces(
-        #   hovertemplate=FiguresGenerator._crear_hovertemplate(config.hover_columns, config.nombre_hover)
-        #)
 
         return fig
 
@@ -88,15 +90,18 @@ class FiguresGenerator:
         """
         template = ""
         if nombre_hover:
-            template += f"<b>%{{customdata[0]}}</b><br>"
+            template += f"<b> %{{customdata[0]}}</b><br>"
             hover_data = hover_columns[1:]
         else:
             hover_data = hover_columns
 
-        for i, col in enumerate(hover_data, start=1 if nombre_hover else 0):
+        print(f"hover_data: {hover_data}")
+        for i, col in enumerate(hover_data, start=0):
             template += f"{col}: %{{customdata[{i}]}}<br>"
 
         template += "<extra></extra>"  # Remover información adicional por defecto
+        print(f"template: {template}")
+    
         return template
     
 

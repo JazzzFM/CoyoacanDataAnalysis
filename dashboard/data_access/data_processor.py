@@ -26,7 +26,9 @@ class GeoDataProcessor:
         return gdf
 
     @staticmethod
-    def seleccionar_metricas(gdf: GeoDataFrame, metricas: List[str]) -> GeoDataFrame:
+    def seleccionar_metricas(gdf: GeoDataFrame, 
+                            metricas: List[str],
+                            tooltip_cols: str) -> GeoDataFrame:
         """
         Selecciona solo las columnas indicadas en 'metricas' (si existen) más la geometría.
         :param gdf: El GeoDataFrame de entrada.
@@ -36,9 +38,14 @@ class GeoDataProcessor:
         if not metricas:
             return gdf
 
-        columnas_validas = [col for col in metricas if col in gdf.columns]
-        if "geometry" not in columnas_validas and "geometry" in gdf.columns:
+        columnas_validas = [col for col in metricas \
+                            if col in gdf.columns]
+                
+        if "geometry" not in columnas_validas and\
+            "geometry" in gdf.columns:
             columnas_validas.append("geometry")
+        
+        columnas_validas += tooltip_cols
 
         return gdf[columnas_validas].copy()
 

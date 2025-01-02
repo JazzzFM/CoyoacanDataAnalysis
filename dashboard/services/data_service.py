@@ -67,6 +67,7 @@ class DataService:
         :return: El GDF filtrado
         """
         gdf = self.datasets.get(dataset_key)
+
         if gdf is None or gdf.empty:
             logger.warning(f"Dataset '{dataset_key}' vacío o inexistente.")
             return gpd.GeoDataFrame()
@@ -77,9 +78,12 @@ class DataService:
         # 2. (Opcional) Filtrar por granularidad si hay una columna que la maneje
         # if "granularidad" in gdf.columns:
         #     gdf = gdf[gdf["granularidad"] == filters.granularidad]
+        print(f"granularidad: {filters.tooltip_cols}")
 
         # 3. Seleccionar columnas/métricas
         metricas = [filters.metrica] if filters.metrica else []
-        gdf = GeoDataProcessor.seleccionar_metricas(gdf, metricas)
+        gdf = GeoDataProcessor.seleccionar_metricas(gdf, 
+                            metricas, 
+                            tooltip_cols = filters.tooltip_cols)
 
         return gdf
