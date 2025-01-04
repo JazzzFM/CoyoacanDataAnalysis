@@ -25,7 +25,7 @@ class PostgresGeoDataLoader:
         """
         self.connection_manager: DatabaseConnectionManager = connection_manager
 
-    def load_datasets(self) -> Dict[str, GeoDataFrame]:
+    def load_dataset(self, table_name: str, geom_column: str) -> Dict[str, GeoDataFrame]:
         """
         Carga múltiples tablas de la base de datos y las
         devuelve en un diccionario {nombre_tabla: GeoDataFrame}.
@@ -33,7 +33,6 @@ class PostgresGeoDataLoader:
         :return: Diccionario con datasets
         :raises RuntimeError: Si no se pudo leer alguna tabla.
         """
-        datasets: Dict[str, GeoDataFrame] = {}
         try:
             logger.info("Cargando datasets geoespaciales desde PostgreSQL...")
             engine = self.connection_manager.get_engine()
@@ -43,20 +42,17 @@ class PostgresGeoDataLoader:
             # Esto podría hacerse condicional según tus necesidades.
 
             # Ajusta las queries a tus tablas reales
-            datasets["demograficos"] = gpd.read_postgis(
-                "SELECT * FROM datos_demograficos",
-                con=engine,
-                geom_col="geometry"
-            )
-            datasets["edafologicos"] = gpd.read_postgis(
-                "SELECT * FROM uso_suelo",
-                con=engine,
-                geom_col="geometry"
-            )
-        
+            data = gpd.read_postgis(
+                f"SELECT * FROM {table_name}",
+                con = engine,
+                geom_col = f"{geom_column}")
 
-            logger.info("Datasets cargados exitosamente.")
-            return datasets
+            logger.info(f"data: {data.__dict__}")
+            print(data)
+            logger.info(f"data.columns: {data.columns}")
+
+            logger.info("Dataset cargados exitosamente.")
+            return data
 
         except Exception as ex:
             logger.error(f"Error al cargar los datasets: {ex}")

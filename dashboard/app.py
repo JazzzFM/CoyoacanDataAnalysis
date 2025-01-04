@@ -3,6 +3,8 @@
 import logging
 from data_access.data_connection import DatabaseCredentials, DatabaseConnectionManager
 from data_access.data_loader import PostgresGeoDataLoader
+from domain.domain_models import TableController
+
 from services.data_service import DataService
 from presentation.controller import DashAppController
 from presentation.callback_register import CallbackRegister
@@ -24,29 +26,29 @@ def main() -> None:
         user = "developer",
         password = "MelonSK998"
     )
+    
     connection_manager = DatabaseConnectionManager(credentials)
 
     # 2. Instanciar loader y data service
     loader = PostgresGeoDataLoader(connection_manager)
     data_service = DataService(loader)
-
-    # 3. Cargar datasets
-    data_service.initialize_datasets()
+    table_controller = TableController()
     
-    # 4. Generar el Frontend iniciarl
+    # 3. Generar el Frontend iniciarl
     layout_builder = LayoutBuilder()
 
-    # 5. Generar la serie de callbacks iniciales
-    callbacks = CallbackRegister(data_service, 
+    # 4. Generar la serie de callbacks iniciales
+    callbacks = CallbackRegister(table_controller,
+                                 data_service, 
                                  layout_builder)
 
-    # 6. Crear la clase controladora de la app Dash
+    # 5. Crear la clase controladora de la app Dash
     dash_controller = DashAppController(data_service,
                             layout_builder,
                             callbacks)
 
-    # 5. Iniciar servidor
-    dash_controller.run(debug=True)
+    # 6. Iniciar servidor
+    dash_controller.run(debug = True)
 
 if __name__ == "__main__":
     main()

@@ -31,20 +31,25 @@ class DataService:
         self.loader: PostgresGeoDataLoader = loader
         self.datasets: Dict[str, GeoDataFrame] = {}
 
-    def initialize_datasets(self) -> None:
+    def initialize_dataset(self, table: Dict) -> None:
         """
         Carga todos los datasets y los guarda en memoria.
         :raises RuntimeError: Si falla la carga desde la DB.
         """
         logger.info("Inicializando carga de datasets en DataService...")
         try:
-            self.datasets = self.loader.load_datasets()
-            logger.info(f"Datasets disponibles: {list(self.datasets.keys())}")
+            self.data = self.loader.load_dataset(
+                    table_name = table.get("table_name"),
+                    geom_column = table.get("geom_column")
+            )
+
+            return self.data
+            #logger.info(f"Datasets disponibles: {list(self.datasets.keys())}")
         except RuntimeError as ex:
             logger.error("No se pudieron inicializar los datasets.")
             raise
 
-    def obtener_anios_disponibles(self, dataset_key: str) -> List[int]:
+    def obtener_anios_disponibles(self, gdf: GeoDataFrame) -> List[int]:
         """
         Retorna la lista de años disponibles en un dataset dado,
         asumiendo que existe la columna 'anio'.
@@ -52,12 +57,13 @@ class DataService:
         :param dataset_key: "demograficos", "edafologicos", etc.
         :return: Lista de años encontrados (ordenada).
         """
-        gdf = self.datasets.get(dataset_key)
         if gdf is None or gdf.empty or "anio" not in gdf.columns:
             return []
         return sorted(gdf["anio"].unique())
 
-    def obtener_datos_filtrados(self, dataset_key: str, filters: DashboardFilters) -> GeoDataFrame:
+    def obtener_datos_filtrados(self, dataset_key: str, 
+                                gdf: GeoDataFrame,
+                                filters: DashboardFilters) -> GeoDataFrame:
         """
         Dado un dataset (p. ej. "demograficos") y un set de filtros,
         retorna un GeoDataFrame filtrado.
@@ -66,24 +72,88 @@ class DataService:
         :param filters: Filtros de dominio (anio, granularidad, metrica)
         :return: El GDF filtrado
         """
-        gdf = self.datasets.get(dataset_key)
+        ### Aquii estamos 
+        #gdf =  self.datasets.get(dataset_key)
 
         if gdf is None or gdf.empty:
             logger.warning(f"Dataset '{dataset_key}' vacío o inexistente.")
             return gpd.GeoDataFrame()
 
+
+        print(f"ANTES gdf filtrado por anio: filters.anio == {filters.anio}")
+        print(gdf)
         # 1. Filtrar por año
-        gdf = GeoDataProcessor.filtrar_por_anio(gdf, filters.anio)
+        #gdf = GeoDataProcessor\
+        #    .filtrar_por_anio(gdf, filters.anio)
+        
+        print(f"gdf filtrado por anio: filters.anio == {filters.anio}")
+        print(gdf)
 
-        # 2. (Opcional) Filtrar por granularidad si hay una columna que la maneje
-        # if "granularidad" in gdf.columns:
-        #     gdf = gdf[gdf["granularidad"] == filters.granularidad]
-        print(f"granularidad: {filters.tooltip_cols}")
-
-        # 3. Seleccionar columnas/métricas
+        # 2. Seleccionar columnas/métricas
         metricas = [filters.metrica] if filters.metrica else []
-        gdf = GeoDataProcessor.seleccionar_metricas(gdf, 
-                            metricas, 
-                            tooltip_cols = filters.tooltip_cols)
+        columnas_fijas = metricas + filters.tooltip_cols
+        print(f"filters.tooltip_cols: {filters.tooltip_cols}")
+
+        # 2. Agrupar por granularidad si hay una columna que la maneje
+        
+        if filters.granularidad == "ageb":
+            agrupa = columnas_fijas + metricas
+            agrupa += ["ID_AGEB", "GEOM_AGEB"]
+            gdf = gdf.groupby(list(set(agrupa)))\
+                .first().reset_index()
+            gdf = gdf[list(set(agrupa))]
+            gdf = gdf.set_geometry("GEOM_AGEB")
+
+        elif filters.granularidad == "colonia":
+            if filters.type_data == "demofraficos":
+                agrupa = columnas_fijas + metricas
+                agrupa += ["ID_COLONIA", "GEOM_COLONIA"]
+                gdf = gdf.groupby(list(set(agrupa)))\
+                    .first().reset_index()
+                gdf = gdf[list(set(agrupa))]
+                gdf = gdf.set_geometry("GEOM_COLONIA")
+
+            elif filters.type_data == "edafologicos":
+                agrupa = columnas_fijas + metricas
+                agrupa += ["ID_COLONIA", "GEOM_COLONIA"]
+                print("inicia ------ Dentro del agrupamiento ------")
+                print(gdf.columns)
+                gdf_ = gdf.groupby(['ID_COLONIA',
+                                    'USO_SUELO',
+                                    'SUPERFICIE',
+                                    'DNSDD_D', 
+                                    'NIVELES', 
+                                    'ALTURA'])\
+                        .size()\
+                        .reset_index(name='counts')\
+                        .sort_values('counts', ascending=False)\
+                        .drop_duplicates('ID_COLONIA')
+                print(gdf_.columns)
+                print(gdf_)
+
+                print("finaliza ------ Dentro del agrupamiento ------")
+
+                gdf = gdf[['ID_COLONIA', 'GEOM_COLONIA']].merge(
+                        gdf_,
+                        on = ['ID_COLONIA'],
+                        how = 'left'
+                    )
+                #gdf = gdf[list(set(agrupa))]
+                gdf = gdf.set_geometry("GEOM_COLONIA")\
+                    .dropna(subset=['USO_SUELO'])
+
+                print("############## FINAL GDF")
+                print(gdf)
+        else:
+            # Aqui no hay agrupaciones?
+            agrupa = columnas_fijas + metricas
+            agrupa += ["ID_MANZANA", "GEOM_MANZANA"]
+            gdf = gdf[(list(set(agrupa)))]
+            gdf = gdf.set_geometry("GEOM_MANZANA")
+
+        print(f"Dentro de granularidad inicio ----------- {filters.granularidad} \n\n")
+        print(gdf.columns)
+        print(gdf)
+        print(f"Dentro de granularidad final ----------- {filters.granularidad} \n\n")
 
         return gdf
