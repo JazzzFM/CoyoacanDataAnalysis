@@ -70,6 +70,11 @@ class TableController:
             "geom_column": "geometry"
         }
 
+        self.electorales = {
+            "table_name": "datos_electorales",
+            "geom_column": "geometry"
+        }
+
 @dataclass
 class MapVisualizationConfig:
     titulo: str
@@ -122,6 +127,18 @@ class DashboardFilters:
                 'categoria',
                 'subcategoria',
                 'personal_ocupado'
+            ]
+        elif self.type_data == "electorales":
+            self.tooltip_cols = [
+                'seccion',
+                'distrito_federal',
+                'distrito_local',
+                'alc_ganador',
+                'alc_participacion',
+                'alc_votos_totales',
+                'fed_ganador',
+                'fed_participacion',
+                'area_km2'
             ]
         else:
             self.tooltip_cols = []

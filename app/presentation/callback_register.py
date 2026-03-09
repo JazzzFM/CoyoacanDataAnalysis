@@ -183,62 +183,60 @@ class CallbackRegister:
 
             dataset_key = self._parse_dataset_key(pathname)
 
-            if gran == 'manzana':
+            # Datasets con geometria propia (no requieren merge con poligonos)
+            if dataset_key in ("electorales", "servicios"):
+                self.gdf_poligonos_data = self.data
 
+            elif gran == 'manzana':
                 if dataset_key == "demograficos":
                     self.gdf_poligonos_data = merge(
-                        self.poligonos_manzana, 
+                        self.poligonos_manzana,
                         self.data,
                         left_on = ['ID_AGEB'],
-                        right_on = ['ageb'], 
+                        right_on = ['ageb'],
                         how = 'left')
-                    
+
                 elif dataset_key == 'edafologicos':
                     self.gdf_poligonos_data = merge(
-                        self.poligonos_manzana, 
-                        self.data,
-                        left_on = ['ID_MANZANA', 'GEOM_MANZANA'],
-                        right_on = ['ID_MANZANA', 'GEOM_MANZANA'], 
-                        how = 'left')
-                
-            elif gran == 'colonia':
-                if dataset_key == "demograficos":
-                    self.gdf_poligonos_data = merge(
-                        self.poligonos_colonia, 
-                        self.data,
-                        left_on = ['ID_AGEB'],
-                        right_on = ['ageb'], 
-                        how = 'left')
-                    
-                elif dataset_key == 'edafologicos':
-                    self.gdf_poligonos_data = merge(
-                        self.poligonos_colonia, 
+                        self.poligonos_manzana,
                         self.data,
                         left_on = ['ID_MANZANA', 'GEOM_MANZANA'],
                         right_on = ['ID_MANZANA', 'GEOM_MANZANA'],
                         how = 'left')
-                    
+
+            elif gran == 'colonia':
+                if dataset_key == "demograficos":
+                    self.gdf_poligonos_data = merge(
+                        self.poligonos_colonia,
+                        self.data,
+                        left_on = ['ID_AGEB'],
+                        right_on = ['ageb'],
+                        how = 'left')
+
+                elif dataset_key == 'edafologicos':
+                    self.gdf_poligonos_data = merge(
+                        self.poligonos_colonia,
+                        self.data,
+                        left_on = ['ID_MANZANA', 'GEOM_MANZANA'],
+                        right_on = ['ID_MANZANA', 'GEOM_MANZANA'],
+                        how = 'left')
+
             elif gran == 'ageb':
                 if dataset_key == "demograficos":
                     self.gdf_poligonos_data = merge(
-                        self.poligonos_ageb, 
+                        self.poligonos_ageb,
                         self.data,
                         left_on = ['ID_AGEB'],
-                        right_on = ['ageb'], 
+                        right_on = ['ageb'],
                         how = 'left')
-                    
+
                 elif dataset_key == "edafologicos":
                     self.gdf_poligonos_data = merge(
-                        self.poligonos_manzana, 
+                        self.poligonos_manzana,
                         self.data,
                         left_on = ['ID_MANZANA'],
-                        right_on = ['ID_MANZANA'], 
+                        right_on = ['ID_MANZANA'],
                         how = 'left')
-            
-            print("#########---->")
-            print(f"delf.gdf_poligonos_data: {self.gdf_poligonos_data.columns}")
-            print(self.gdf_poligonos_data)
-            print("<----#########")
 
             # Llenamos un objeto DashboardFilters
             filters = DashboardFilters(
