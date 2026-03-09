@@ -1,4 +1,11 @@
 # .dockerignore
-
-config/
-
+__pycache__/
+*.pyc
+.venv/
+.env
+.git/
+clean_data/
+data/
+notebooks/
+docs/
+*.md
