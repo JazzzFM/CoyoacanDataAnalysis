@@ -1,8 +1,8 @@
 ---
 id: "INFRA-2026-03-08__deploy-render"
 title: "Deploy Flask+Dash en Render (free tier)"
-status: "BACKLOG"
-phase: "Plan"
+status: "DOING"
+phase: "Implement"
 scope_in:
   - "Crear render.yaml o Procfile para Gunicorn"
   - "Configurar variables de entorno en Render"
@@ -26,17 +26,19 @@ plan_phase: 1
 # Pasos
 
 ### 1. Preparar archivos de deploy
-- [ ] Crear `render.yaml` con config del servicio web
-- [ ] O crear `Procfile`: `web: gunicorn --bind 0.0.0.0:$PORT run:app`
-- [ ] Verificar que `requirements.txt` esté actualizado (agregar `geoalchemy2`)
-- [ ] Agregar `runtime.txt` con versión Python si es necesario
+- [x] Crear `render.yaml` con config del servicio web
+- [x] Crear `Procfile`: `web: gunicorn --bind 0.0.0.0:$PORT run:app`
+- [x] Crear `build.sh` para instalar deps de sistema (GDAL/GEOS/PROJ)
+- [x] Actualizar `requirements.txt` (geoalchemy2, Werkzeug==2.3.8, gunicorn==21.2.0)
+- [x] Adaptar `app/dashboard.py` para cargar polígonos desde Neon PostGIS
+- [x] Verificar arranque local con Gunicorn (152 colonias cargadas)
 
-### 2. Configurar en Render
+### 2. Configurar en Render (manual — requiere usuario)
 - [ ] Crear cuenta en Render (gratis, sin tarjeta)
-- [ ] Nuevo Web Service → conectar repo GitHub
-- [ ] Configurar variables de entorno: `DATABASE_URI`, `SECRET_KEY`, `DASH_PORT`
-- [ ] Build command: `pip install -r requirements.txt`
-- [ ] Start command: `gunicorn --bind 0.0.0.0:$PORT run:app`
+- [ ] Nuevo Web Service → conectar repo `JazzzFM/CoyoacanDataAnalysis`
+- [ ] Configurar variables de entorno: `DATABASE_URI`, `SECRET_KEY`
+- [ ] Build command: `./build.sh`
+- [ ] Start command: `gunicorn --bind 0.0.0.0:$PORT --timeout 120 --workers 2 run:app`
 
 ### 3. Verificar
 - [ ] App responde en URL pública
@@ -49,7 +51,6 @@ plan_phase: 1
 ### 5. Documentar
 - [ ] Crear `docs/guias/setup-neon-render.md`
 - [ ] Actualizar `CLAUDE.md`
-- [ ] Crear ADR `docs/decisiones/20260308-migracion-neon-render.md`
 
 # Dependencias
 - **Requiere:** Código adaptado para Neon (tarea TASK__adaptar-codigo-conexion-neon)
@@ -57,3 +58,4 @@ plan_phase: 1
 
 # Updates
 - 2026-03-08 - Created. Separada de Phase 3 de INFRA task.
+- 2026-03-08 - Moved to DOING. Archivos de deploy creados: render.yaml, Procfile, build.sh. Dashboard adaptado para PostGIS. Verificado con Gunicorn localmente.

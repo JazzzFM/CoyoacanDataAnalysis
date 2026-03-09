@@ -9,26 +9,21 @@ Análisis geoespacial de la alcaldía de Coyoacán (CDMX) con datos demográfico
 ## Comandos Principales
 
 ```bash
-# Levantar toda la infraestructura (PostGIS + app)
-docker compose up --build
+# Desarrollo local (con Neon PostGIS remoto)
+source .venv/bin/activate
+python run.py
 
-# Solo la base de datos
-docker compose up db
-
-# Crear usuario admin dentro del contenedor
-docker compose exec app flask create-admin <password>
-
-# Ejecutar migraciones
-docker compose exec app flask db upgrade
-
-# Generar nueva migración
-docker compose exec app flask db migrate -m "descripción"
-
-# Dashboard standalone (fuera de Docker, requiere DB local)
+# Dashboard standalone (con Neon PostGIS remoto)
 cd dashboard && python app.py
 
-# App Flask+Dash (fuera de Docker)
-python run.py
+# Gunicorn local (simula Render)
+gunicorn --bind 0.0.0.0:8050 --timeout 120 --workers 2 run:app
+
+# Docker (legacy, para desarrollo con PostGIS local)
+docker compose up --build
+
+# Crear usuario admin
+flask create-admin <password>
 ```
 
 ## Arquitectura
@@ -37,10 +32,10 @@ El proyecto tiene **dos aplicaciones Dash coexistentes**:
 
 ### 1. Flask+Dash integrado (`app/` + `run.py`)
 - `run.py` → `app/__init__.py:create_app()` (factory pattern)
-- Flask maneja autenticación (`routes.py`, `models.py`, `auth.py`) con Flask-Login
+- Flask maneja autenticación (`routes.py`, `models.py`) con Flask-Login
 - Dash embebido en `/dashboard/` vía `app/dashboard.py:init_dashboard(server)`
-- Lee GeoJSON local (`data/manzanas_coyoacan.geojson`)
-- Desplegado con Gunicorn en Docker (puerto 8050)
+- Carga polígonos de colonias desde Neon PostGIS (`gpd.read_postgis`)
+- Desplegado con Gunicorn en Render (free tier)
 
 ### 2. Dashboard standalone (`dashboard/`)
 Arquitectura en capas con inyección de dependencias:
@@ -75,11 +70,17 @@ Municipio → Colonia → AGEB → Manzana. Los polígonos se almacenan en la ta
 
 ## Infraestructura
 
-- **Docker Compose:** servicio `app` (Python 3.9-slim) + servicio `db` (postgis/postgis:14-3.2)
-- **Red interna:** `coyoacan_network`
-- **Variables de entorno** (archivo `.env`): `DATABASE_URI`, `SECRET_KEY`, `DASH_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
-- **wait-for-it.sh:** script de espera para que la DB esté lista antes de arrancar Gunicorn
-- El Dockerfile aplica un patch a Flask-Login para compatibilidad con Werkzeug (línea 24-27)
+### Producción: Neon + Render (costo $0/mes)
+- **Neon PostGIS:** Project `lucky-sun-44184647`, host `ep-holy-queen-ak4xzy1t-pooler.c-3.us-west-2.aws.neon.tech`
+- **Render:** Web Service free tier, Python 3.11, Gunicorn
+- **Deploy:** `render.yaml` + `build.sh` + `Procfile`
+- **Variables de entorno** (`.env` / Render dashboard): `DATABASE_URI`, `SECRET_KEY`
+- **Anti-sleep:** UptimeRobot ping cada 5 min
+- **Werkzeug:** Pinneado a 2.3.8 para compatibilidad con Flask-Login 0.6.2
+
+### Legacy: Docker Compose
+- Servicio `app` (Python 3.9-slim) + servicio `db` (postgis/postgis:14-3.2)
+- El Dockerfile aplica un patch a Flask-Login para Werkzeug (ya no necesario con pin)
 
 ## Convenciones
 
