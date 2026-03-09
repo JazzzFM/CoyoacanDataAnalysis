@@ -1,8 +1,8 @@
 ---
 id: "INFRA-2026-03-08__deploy-render"
 title: "Deploy Flask+Dash en Render (free tier)"
-status: "DOING"
-phase: "Implement"
+status: "DONE"
+phase: "Done"
 scope_in:
   - "Crear render.yaml o Procfile para Gunicorn"
   - "Configurar variables de entorno en Render"

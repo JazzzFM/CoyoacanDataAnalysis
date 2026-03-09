@@ -1,8 +1,8 @@
 ---
 id: "INFRA-2026-03-08__migrar-docker-a-neon-render"
 title: "Migrar de Docker/VPS a Neon (PostGIS) + Render (App)"
-status: "DOING"
-phase: "Implement"
+status: "DONE"
+phase: "Done"
 scope_in:
   - "Crear proyecto PostGIS en Neon y migrar datos"
   - "Adaptar connection string y pool config en data_connection.py"
