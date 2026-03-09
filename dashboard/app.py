@@ -1,7 +1,11 @@
 # app.py
 
 import logging
+import os
+from dotenv import load_dotenv
 from data_access.data_connection import DatabaseCredentials, DatabaseConnectionManager
+
+load_dotenv()
 from data_access.data_loader import PostgresGeoDataLoader
 from domain.domain_models import TableController
 
@@ -18,13 +22,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def main() -> None:
-    # 1. Preparar credenciales
+    # 1. Preparar credenciales desde variables de entorno
     credentials = DatabaseCredentials(
-        host = "localhost",
-        port = 5432,
-        database = "Poligonos",
-        user = "developer",
-        password = "MelonSK998"
+        host = os.getenv("DB_HOST", "localhost"),
+        port = int(os.getenv("DB_PORT", "5432")),
+        database = os.getenv("DB_NAME", "neondb"),
+        user = os.getenv("DB_USER", "neondb_owner"),
+        password = os.getenv("DB_PASSWORD", "")
     )
     
     connection_manager = DatabaseConnectionManager(credentials)

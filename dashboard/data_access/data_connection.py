@@ -50,6 +50,9 @@ class DatabaseConnectionManager:
                 self._engine = create_engine(
                     f"postgresql://{self.credentials.user}:{self.credentials.password}"
                     f"@{self.credentials.host}:{self.credentials.port}/{self.credentials.database}"
+                    f"?sslmode=require",
+                    pool_pre_ping=True,
+                    pool_recycle=300
                 )
             except Exception as ex:
                 logger.error(f"Error creando el Engine de SQLAlchemy: {ex}")
