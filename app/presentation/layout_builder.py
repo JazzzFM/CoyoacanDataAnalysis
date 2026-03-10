@@ -42,7 +42,9 @@ class LayoutBuilder:
                     dbc.NavLink("Edafológicos", href="/dashboard/edafologicos", active="exact"),
                     dbc.NavLink("Electorales", href="/dashboard/electorales", active="exact"),
                     dbc.NavLink("Servicios", href="/dashboard/servicios", active="exact"),
-                    dbc.NavLink("Ambientales", href="/dashboard/ambientales", active="exact")
+                    dbc.NavLink("Ambientales", href="/dashboard/ambientales", active="exact"),
+                    dbc.NavLink("Infraestructura", href="/dashboard/infraestructura", active="exact"),
+                    dbc.NavLink("Recursos Naturales", href="/dashboard/recursos-naturales", active="exact"),
                 ],
                 vertical=True,
                 pills=True,
@@ -91,6 +93,37 @@ class LayoutBuilder:
             self.create_filter_row(anios),
             html.Div(id="mapa-plotly")
         ])
+
+    def create_infraestructura_page(self, categorias: List[str]) -> html.Div:
+        return html.Div([
+            html.H3("Rubro: Infraestructura"),
+            self._create_category_filter(categorias, "cat-infra"),
+            html.Div(id="mapa-categorico")
+        ])
+
+    def create_recursos_naturales_page(self, categorias: List[str]) -> html.Div:
+        return html.Div([
+            html.H3("Rubro: Recursos Naturales"),
+            self._create_category_filter(categorias, "cat-recursos"),
+            html.Div(id="mapa-categorico")
+        ])
+
+    def _create_category_filter(self, categorias: List[str], dropdown_id: str) -> html.Div:
+        opciones = [
+            {"label": c.replace('_', ' ').title(), "value": c}
+            for c in categorias
+        ]
+        return html.Div([
+            html.Div([
+                html.Label("Categorías:"),
+                dcc.Dropdown(
+                    id=dropdown_id,
+                    options=opciones,
+                    value=[c["value"] for c in opciones],
+                    multi=True
+                )
+            ], style={"width": "50%", "display": "inline-block"})
+        ], style={"display": "flex", "flexDirection": "row", "marginBottom": "10px"})
 
     def create_filter_row(self, anios: List[int]) -> html.Div:
         """

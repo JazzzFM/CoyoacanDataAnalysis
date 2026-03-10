@@ -17,6 +17,7 @@ Uso:
 
 import sys
 import os
+import glob as globmod
 import argparse
 import logging
 import geopandas as gpd
@@ -62,6 +63,14 @@ def obtener_poligono_coyoacan(engine):
         from shapely.geometry import box
         poligono = box(*COYOACAN_BBOX)
         return gpd.GeoDataFrame(geometry=[poligono], crs=CRS_ALMACENAMIENTO)
+
+
+def buscar_shp(directorio, patron):
+    """Busca un SHP dentro de un directorio usando glob (resuelve Unicode/rutas)."""
+    resultados = globmod.glob(os.path.join(directorio, "**", patron), recursive=True)
+    # Filtrar __MACOSX
+    resultados = [r for r in resultados if '__MACOSX' not in r]
+    return resultados[0] if resultados else None
 
 
 def cargar_y_filtrar(ruta, gdf_coyoacan, nombre, encoding=None):
@@ -160,8 +169,9 @@ def main():
         infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
 
     # Tren Ligero estaciones
+    ruta_tl_est = buscar_shp(f"{BASE_DIR}/tren_ligero", "STE_TrenLigero_estaciones*.shp")
     gdf = cargar_y_filtrar(
-        f"{BASE_DIR}/tren_ligero/ste_shp/STE_TrenLigero_estaciones_utm14n.shp",
+        ruta_tl_est or f"{BASE_DIR}/tren_ligero/ste_shp/ste_tren_ligero_shp/STE_TrenLigero_estaciones_utm14n.shp",
         gdf_coyoacan, "tren_ligero_estaciones")
     if gdf is not None and len(gdf) > 0:
         gdf['categoria'] = 'transporte'
@@ -175,8 +185,9 @@ def main():
         infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
 
     # Tren Ligero linea
+    ruta_tl_lin = buscar_shp(f"{BASE_DIR}/tren_ligero", "STE_TrenLigero_linea*.shp")
     gdf = cargar_y_filtrar(
-        f"{BASE_DIR}/tren_ligero/ste_shp/STE_TrenLigero_linea_utm14n.shp",
+        ruta_tl_lin or f"{BASE_DIR}/tren_ligero/ste_shp/ste_tren_ligero_shp/STE_TrenLigero_linea_utm14n.shp",
         gdf_coyoacan, "tren_ligero_linea")
     if gdf is not None and len(gdf) > 0:
         gdf['categoria'] = 'transporte'
@@ -196,9 +207,10 @@ def main():
                 infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
             break
 
-    # Salud
+    # Salud (nombre del archivo tiene 'а' cirilica U+0430 en "bаsico")
+    ruta_salud = buscar_shp(f"{BASE_DIR}/salud", "Equipamiento_*salud.shp")
     gdf = cargar_y_filtrar(
-        f"{BASE_DIR}/salud/Equipamiento_basico_de_salud.shp",
+        ruta_salud or f"{BASE_DIR}/salud/Equipamiento_basico_de_salud.shp",
         gdf_coyoacan, "salud")
     if gdf is not None and len(gdf) > 0:
         gdf['categoria'] = 'salud'
@@ -267,9 +279,9 @@ def main():
             gdf['tipo'] = 'general'
         nat_frames.append(gdf[['nombre', 'categoria', 'tipo', 'geometry']].copy())
 
-    # Rios
-    for shp_name in ['Rios de CDMX.shp', 'rios_cdmx.shp']:
-        ruta_rios = f"{BASE_DIR}/rios/rios_cdmx/{shp_name}"
+    # Rios (archivo real tiene acento: "Ríos de CDMX.shp")
+    ruta_rios_found = buscar_shp(f"{BASE_DIR}/rios", "R*os de CDMX.shp")
+    for ruta_rios in filter(None, [ruta_rios_found, f"{BASE_DIR}/rios/rios_cdmx/Ríos de CDMX.shp"]):
         if os.path.exists(ruta_rios):
             gdf = cargar_y_filtrar(ruta_rios, gdf_coyoacan, "rios")
             if gdf is not None and len(gdf) > 0:
@@ -289,9 +301,10 @@ def main():
                 nat_frames.append(gdf[['nombre', 'categoria', 'tipo', 'geometry']].copy())
             break
 
-    # Monumentos historicos
+    # Monumentos historicos (archivo real: "Zonas_Monumentos_Históricos_.shp")
+    ruta_monum = buscar_shp(f"{BASE_DIR}/monumentos_historicos", "Zonas_Monumentos_Hist*ricos_.shp")
     gdf = cargar_y_filtrar(
-        f"{BASE_DIR}/monumentos_historicos/monumentos_historicos/Zonas_Monumentos_Historicos_.shp",
+        ruta_monum or f"{BASE_DIR}/monumentos_historicos/monumentos_historicos/Zonas_Monumentos_Históricos_.shp",
         gdf_coyoacan, "monumentos")
     if gdf is not None and len(gdf) > 0:
         gdf['categoria'] = 'patrimonio'

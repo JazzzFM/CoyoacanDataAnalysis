@@ -38,6 +38,8 @@ class TableController:
     electorales: object = field(init = False)
     servicios: object = field(init = False)
     ambientales: object = field(init = False)
+    infraestructura: object = field(init = False)
+    recursos_naturales: object = field(init = False)
 
     def __post_init__(self):
         self.poligonos_manzana = {
@@ -77,6 +79,16 @@ class TableController:
 
         self.ambientales = {
             "table_name": "datos_indicadores_colonia",
+            "geom_column": "geometry"
+        }
+
+        self.infraestructura = {
+            "table_name": "datos_infraestructura",
+            "geom_column": "geometry"
+        }
+
+        self.recursos_naturales = {
+            "table_name": "datos_recursos_naturales",
             "geom_column": "geometry"
         }
 
@@ -154,6 +166,18 @@ class DashboardFilters:
                 'pct_viviendas_desocupadas',
                 'incremento_abs_poblacion',
                 'cat_urbanismo_social',
+            ]
+        elif self.type_data == "infraestructura":
+            self.tooltip_cols = [
+                'nombre',
+                'categoria',
+                'subcategoria',
+            ]
+        elif self.type_data == "recursos_naturales":
+            self.tooltip_cols = [
+                'nombre',
+                'categoria',
+                'tipo',
             ]
         else:
             self.tooltip_cols = []

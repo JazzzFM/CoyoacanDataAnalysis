@@ -54,6 +54,7 @@ class CallbackRegister:
         self._register_page_callback(app)
         self._register_metrica_callback(app)
         self._register_map_callback(app)
+        self._register_categorico_callback(app)
 
     def _register_page_callback(self, app: Dash) -> None:
         """
@@ -118,13 +119,25 @@ class CallbackRegister:
             elif pathname == "/dashboard/ambientales":
                 self.data = self.data_service\
                     .initialize_dataset(self.table_controller.ambientales)
-            
+
                 anios = self.data_service\
                     .obtener_anios_disponibles(self.data)
-                
+
                 page = self.page_builder.create_ambientales_page(anios)
                 return page
-            
+
+            elif pathname == "/dashboard/infraestructura":
+                self.data = self.data_service\
+                    .initialize_dataset(self.table_controller.infraestructura)
+                cats = sorted(self.data['subcategoria'].unique())
+                return self.page_builder.create_infraestructura_page(cats)
+
+            elif pathname == "/dashboard/recursos-naturales":
+                self.data = self.data_service\
+                    .initialize_dataset(self.table_controller.recursos_naturales)
+                cats = sorted(self.data['categoria'].unique())
+                return self.page_builder.create_recursos_naturales_page(cats)
+
             else:
                 return html.Div([
                     html.H1("404: No encontrado", className = "text-danger"),
@@ -312,5 +325,56 @@ class CallbackRegister:
         
         elif pathname == "/dashboard/ambientales":
             return "ambientales"
-        
+
+        elif pathname == "/dashboard/infraestructura":
+            return "infraestructura"
+
+        elif pathname == "/dashboard/recursos-naturales":
+            return "recursos_naturales"
+
         return "demograficos"
+
+    def _register_categorico_callback(self, app: Dash) -> None:
+        """
+        Callback para generar mapas categoricos (infraestructura y recursos naturales).
+        Usa dropdown multi-select de categorias en vez de año/granularidad/métrica.
+        """
+
+        @app.callback(
+            Output("mapa-categorico", "children"),
+            [Input("cat-infra", "value"),
+             Input("cat-recursos", "value"),
+             Input("url", "pathname")]
+        )
+        def actualizar_mapa_categorico(cats_infra, cats_recursos, pathname):
+            dataset_key = self._parse_dataset_key(pathname)
+
+            if dataset_key == "infraestructura":
+                categorias_sel = cats_infra or []
+                columna_cat = 'subcategoria'
+                titulo = "Infraestructura en Coyoacán"
+            elif dataset_key == "recursos_naturales":
+                categorias_sel = cats_recursos or []
+                columna_cat = 'categoria'
+                titulo = "Recursos Naturales en Coyoacán"
+            else:
+                return html.Div()
+
+            if not categorias_sel:
+                return html.Div("Seleccione al menos una categoría.")
+
+            figura = FiguresGenerator.generar_mapa_categorico(
+                gdf=self.data,
+                columna_cat=columna_cat,
+                columna_nombre='nombre',
+                titulo=titulo,
+                categorias_visibles=categorias_sel,
+            )
+
+            if figura is None:
+                return html.Div("No se encontraron datos para las categorías seleccionadas.")
+
+            return dcc.Graph(
+                figure=figura,
+                style={'width': '100%', 'height': '800px'}
+            )
