@@ -72,29 +72,16 @@ class CallbackRegister:
             elif pathname == "/dashboard/demograficos":
                 self.data = self.data_service\
                      .initialize_dataset(self.table_controller.demograficos)
-                print(f"data: {self.data.columns}")
                 anios = self.data_service\
                     .obtener_anios_disponibles(self.data)
-                print(f"anios : {anios}")
-                page = self.page_builder\
-                    .create_demograficos_page(anios)
-                
-                return page
-            
+                return self.page_builder.create_demograficos_page(anios)
+
             elif pathname == "/dashboard/edafologicos":
                 self.data = self.data_service\
-                    .initialize_dataset(self.table_controller\
-                                        .edafologicos)
-                
-                print(f"data: {self.data.columns}")
+                    .initialize_dataset(self.table_controller.edafologicos)
                 anios = self.data_service\
                     .obtener_anios_disponibles(self.data)
-                
-                print(f"anios : {anios}")
-
-                page = self.page_builder\
-                    .create_edafologicos_page(anios)
-                return page
+                return self.page_builder.create_edafologicos_page(anios)
 
             elif pathname == "/dashboard/electorales":
                 self.data = self.data_service\

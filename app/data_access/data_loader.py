@@ -47,11 +47,7 @@ class PostgresGeoDataLoader:
                 con = engine,
                 geom_col = f"{geom_column}")
 
-            logger.info(f"data: {data.__dict__}")
-            print(data)
-            logger.info(f"data.columns: {data.columns}")
-
-            logger.info("Dataset cargados exitosamente.")
+            logger.info(f"Dataset cargado: {table_name} ({len(data)} registros)")
             return data
 
         except Exception as ex:
