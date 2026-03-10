@@ -75,6 +75,11 @@ class TableController:
             "geom_column": "geometry"
         }
 
+        self.ambientales = {
+            "table_name": "datos_indicadores_colonia",
+            "geom_column": "geometry"
+        }
+
 @dataclass
 class MapVisualizationConfig:
     titulo: str
@@ -139,6 +144,16 @@ class DashboardFilters:
                 'fed_ganador',
                 'fed_participacion',
                 'area_km2'
+            ]
+        elif self.type_data == "ambientales":
+            self.tooltip_cols = [
+                'colonia',
+                'densidad_viv_ha',
+                'm2_area_verde_hab',
+                'm2_espacio_pub_hab',
+                'pct_viviendas_desocupadas',
+                'incremento_abs_poblacion',
+                'cat_urbanismo_social',
             ]
         else:
             self.tooltip_cols = []

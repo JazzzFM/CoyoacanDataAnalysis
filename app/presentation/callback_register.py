@@ -184,7 +184,7 @@ class CallbackRegister:
             dataset_key = self._parse_dataset_key(pathname)
 
             # Datasets con geometria propia (no requieren merge con poligonos)
-            if dataset_key in ("electorales", "servicios"):
+            if dataset_key in ("electorales", "servicios", "ambientales"):
                 self.gdf_poligonos_data = self.data
 
             elif gran == 'manzana':
