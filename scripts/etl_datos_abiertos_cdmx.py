@@ -122,7 +122,8 @@ DATASETS = {
             "TAXONOMIA": "taxonomia_sismica",
             "INTENSIDAD": "intensidad_sismica",
             "DESCRIPCIO": "descripcion_sismica",
-        }
+        },
+        "rename_id": {"COLONIA": "colonia"},
     },
     "ue_turismo": {
         "shp": "ue_turismo/servicios_turismo/rc_8.shp",
@@ -146,12 +147,92 @@ DATASETS = {
             "C_IDS_cev": "cat_calidad_vivienda",
         }
     },
+    "escuelas_basicas": {
+        "shp": "escuelas_basicas/Equip_bаsico_educ.shp",
+        "filtro_col": "alcaldia",
+        "filtro_val": "COYOACAN",
+        "cols_id": ["colonia", "cve_col"],
+        "cols_datos": {
+            "NoEqEduBas": "num_escuelas_basicas",
+            "DisEqBas_m": "distancia_escuela_m",
+            "C_EqEduBas": "cat_escuelas_basicas",
+        }
+    },
+    "infra_peatonal": {
+        "shp": "infra_peatonal/Nivel de presencia de infraestructura peatonal por colonia/Dist_acce_infra.shp",
+        "filtro_col": "alcaldia",
+        "filtro_val": "COYOACAN",
+        "cols_id": ["colonia", "cve_col"],
+        "cols_datos": {
+            "INFRAPEAT": "infra_peatonal",
+        }
+    },
+    "consumo_agua": {
+        "shp": "consumo_agua/Consumo_hab_prom_agua_col.shp",
+        "filtro_col": "alcaldia",
+        "filtro_val": "COYOACAN",
+        "cols_id": ["colonia", "cve_col"],
+        "cols_datos": {
+            "PROMVIVCON": "consumo_agua_prom_m3",
+            "C_PROMVIVC": "cat_consumo_agua",
+        }
+    },
+    "tasa_crecimiento": {
+        "shp": "tasa_crecimiento/tasa_crecimiento_medio/tcma10_20.shp",
+        "filtro_col": "alcaldia",
+        "filtro_val": "COYOACAN",
+        "cols_id": ["colonia", "cve_col"],
+        "cols_datos": {
+            "TCMA10_20": "tasa_crecimiento_2010_2020",
+            "PobTot2020": "poblacion_2020",
+            "DenPob20": "densidad_pob_2020",
+            "DifDenPob": "dif_densidad_pob",
+        }
+    },
+    "ue_comerciales": {
+        "shp": "densidad_ue_comerciales/due_comerciales/ue_comerciales_colonia.shp",
+        "filtro_col": "alcaldia",
+        "filtro_val": "COYOACAN",
+        "cols_id": ["colonia", "cve_col"],
+        "cols_datos": {
+            "ue": "ue_total",
+            "com": "ue_comerciales",
+            "ind": "ue_industriales",
+            "serv": "ue_servicios",
+        },
+        "rename_id": {"nombre": "_drop_nombre_ue"},
+    },
+    "rezago_espacio_pub": {
+        "shp_glob": "rezago_espacio_publico/**/rezago_esppublico.shp",
+        "filtro_col": "nom_mun",
+        "filtro_val": "COYOACAN",
+        "cols_id": ["nombre"],
+        "cols_datos": {
+            "sumaval": "rezago_espacio_publico",
+        },
+        "rename_id": {"nombre": "colonia"},
+    },
 }
 
 
 def procesar_dataset(nombre, config):
     """Carga un shapefile, filtra Coyoacan y extrae columnas relevantes."""
-    ruta = os.path.join(BASE_DIR, config["shp"])
+    import glob as globmod
+    if "shp_glob" in config:
+        encontrados = [r for r in globmod.glob(
+            os.path.join(BASE_DIR, config["shp_glob"]), recursive=True)
+            if '__MACOSX' not in r]
+        ruta = encontrados[0] if encontrados else os.path.join(BASE_DIR, config.get("shp", ""))
+    else:
+        ruta = os.path.join(BASE_DIR, config["shp"])
+        # Fallback: si la ruta no existe, buscar con glob (resuelve Unicode)
+        if not os.path.exists(ruta):
+            patron = os.path.join(os.path.dirname(ruta), "**",
+                                  os.path.basename(ruta))
+            encontrados = [r for r in globmod.glob(patron, recursive=True)
+                           if '__MACOSX' not in r]
+            if encontrados:
+                ruta = encontrados[0]
     logger.info(f"  [{nombre}] Cargando: {ruta}")
 
     if not os.path.exists(ruta):
@@ -179,7 +260,9 @@ def procesar_dataset(nombre, config):
                 break
 
     if col_filtro in gdf.columns:
-        gdf = gdf[gdf[col_filtro].str.upper().str.strip() == val_filtro].copy()
+        # Usar contains parcial para manejar mojibake y acentos
+        gdf = gdf[gdf[col_filtro].str.upper().str.contains(
+            val_filtro[:4], na=False)].copy()
     else:
         logger.warning(f"  [{nombre}] No se encontro columna de filtro '{col_filtro}'")
         return None
@@ -201,6 +284,10 @@ def procesar_dataset(nombre, config):
 
     gdf_out = gdf[cols_id_disponibles + list(cols_disponibles.keys())].copy()
     gdf_out = gdf_out.rename(columns=cols_disponibles)
+
+    # Renombrar columnas de ID si se especifica (e.g., COLONIA -> colonia)
+    if "rename_id" in config:
+        gdf_out = gdf_out.rename(columns=config["rename_id"])
 
     return gdf_out
 
@@ -287,6 +374,55 @@ def main():
         # Desduplicar por colonia (una colonia puede caer en >1 zona)
         gdf_final = gdf_final.drop_duplicates(subset=['colonia', 'cve_col'], keep='first')
         logger.info(f"  Valor suelo asignado: {gdf_final['valor_suelo_rango'].notna().sum()} colonias")
+
+    # Spatial join: temperatura nocturna por AGEB -> promedio por colonia
+    import glob as globmod
+    ruta_temp = globmod.glob(os.path.join(BASE_DIR, "temperatura_nocturna/**/*.shp"), recursive=True)
+    ruta_temp = [r for r in ruta_temp if '__MACOSX' not in r]
+    if ruta_temp:
+        logger.info("  Enriqueciendo con temperatura nocturna (AGEB -> colonia)...")
+        gdf_temp = gpd.read_file(ruta_temp[0])
+        if gdf_temp.crs != gdf_final.crs:
+            gdf_temp = gdf_temp.to_crs(gdf_final.crs)
+        # Spatial join: centroides de AGEB -> colonias, promediar
+        gdf_temp['centroid_temp'] = gdf_temp.geometry.centroid
+        gdf_temp_pts = gdf_temp.set_geometry('centroid_temp')[['centroid_temp', 'MEAN', 'MIN', 'MAX']]
+        gdf_temp_pts = gdf_temp_pts.rename(columns={'centroid_temp': 'geometry'}).set_geometry('geometry')
+        joined = gpd.sjoin(gdf_temp_pts, gdf_final[['colonia', 'geometry']], how='inner', predicate='within')
+        if not joined.empty:
+            temp_por_col = joined.groupby('colonia').agg(
+                temp_nocturna_media=('MEAN', 'mean'),
+                temp_nocturna_min=('MIN', 'min'),
+                temp_nocturna_max=('MAX', 'max'),
+            ).round(2).reset_index()
+            gdf_final = gdf_final.merge(temp_por_col, on='colonia', how='left')
+            logger.info(f"  Temperatura asignada: {gdf_final['temp_nocturna_media'].notna().sum()} colonias")
+
+    # Spatial join: internet por AGEB -> promedio por colonia
+    ruta_inet = globmod.glob(os.path.join(BASE_DIR, "internet_viviendas/**/*.shp"), recursive=True)
+    ruta_inet = [r for r in ruta_inet if '__MACOSX' not in r]
+    if ruta_inet:
+        logger.info("  Enriqueciendo con acceso a internet (AGEB -> colonia)...")
+        gdf_inet = gpd.read_file(ruta_inet[0])
+        if gdf_inet.crs != gdf_final.crs:
+            gdf_inet = gdf_inet.to_crs(gdf_final.crs)
+        gdf_inet['centroid_inet'] = gdf_inet.geometry.centroid
+        gdf_inet_pts = gdf_inet.set_geometry('centroid_inet')[['centroid_inet', 'p_vph_pc', 'p_vph_cl', 'p_vph_n']]
+        gdf_inet_pts = gdf_inet_pts.rename(columns={'centroid_inet': 'geometry'}).set_geometry('geometry')
+        joined = gpd.sjoin(gdf_inet_pts, gdf_final[['colonia', 'geometry']], how='inner', predicate='within')
+        if not joined.empty:
+            inet_por_col = joined.groupby('colonia').agg(
+                pct_viv_pc=('p_vph_pc', 'mean'),
+                pct_viv_celular=('p_vph_cl', 'mean'),
+                pct_viv_internet=('p_vph_n', 'mean'),
+            ).round(2).reset_index()
+            gdf_final = gdf_final.merge(inet_por_col, on='colonia', how='left')
+            logger.info(f"  Internet asignado: {gdf_final['pct_viv_internet'].notna().sum()} colonias")
+
+    # Limpiar columnas temporales de merges internos
+    drop_cols = [c for c in gdf_final.columns if c.startswith('_drop_')]
+    if drop_cols:
+        gdf_final = gdf_final.drop(columns=drop_cols, errors='ignore')
 
     logger.info(f"  GeoDataFrame final: {len(gdf_final)} colonias, {len(gdf_final.columns)} columnas")
 
