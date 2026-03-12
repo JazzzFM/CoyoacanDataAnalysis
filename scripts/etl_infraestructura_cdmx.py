@@ -279,6 +279,30 @@ def main():
         gdf['nombre'] = 'Accidente peatonal'
         infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
 
+    # Inundaciones (filtro textual con encoding corrupto, usar contains)
+    ruta_inund = buscar_shp(f"{BASE_DIR}/inundaciones", "atlas_de_riesgo_inundaciones.shp")
+    if ruta_inund and os.path.exists(ruta_inund):
+        gdf = gpd.read_file(ruta_inund)
+        if gdf.crs and str(gdf.crs) != CRS_ALMACENAMIENTO:
+            gdf = gdf.to_crs(CRS_ALMACENAMIENTO)
+        gdf = gdf[gdf['alcaldi'].str.upper().str.contains('COYO', na=False)]
+        logger.info(f"  [inundaciones] En Coyoacan: {len(gdf)} registros")
+        if len(gdf) > 0:
+            gdf['categoria'] = 'riesgo'
+            gdf['subcategoria'] = 'zona_inundacion'
+            gdf['nombre'] = 'Zona inundación: ' + gdf['intnsdd'].fillna('ND')
+            infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
+
+    # Convergencia de riesgos (sin filtro textual, usar clip espacial)
+    ruta_riesgos = buscar_shp(f"{BASE_DIR}/convergencia_riesgos", "sintesis_riesgos.shp")
+    if ruta_riesgos and os.path.exists(ruta_riesgos):
+        gdf = cargar_y_filtrar(ruta_riesgos, gdf_coyoacan, "convergencia_riesgos")
+        if gdf is not None and len(gdf) > 0:
+            gdf['categoria'] = 'riesgo'
+            gdf['subcategoria'] = 'convergencia_riesgos'
+            gdf['nombre'] = 'Multi-riesgo (score: ' + gdf['SUMATORIA'].astype(str) + ')'
+            infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
+
     # Subir infraestructura
     if infra_frames:
         gdf_infra = pd.concat(infra_frames, ignore_index=True)
