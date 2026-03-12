@@ -46,6 +46,8 @@ class LayoutBuilder:
                     dbc.NavLink("Ambientales", href="/dashboard/ambientales", active="exact"),
                     dbc.NavLink("Infraestructura", href="/dashboard/infraestructura", active="exact"),
                     dbc.NavLink("Recursos Naturales", href="/dashboard/recursos-naturales", active="exact"),
+                    html.Hr(),
+                    dbc.NavLink("Capas", href="/dashboard/capas", active="exact"),
                 ],
                 vertical=True,
                 pills=True,
@@ -160,6 +162,63 @@ class LayoutBuilder:
             html.H3("Rubro: Tablero Ambiental"),
             self.create_filter_row(anios),
             html.Div(id="mapa-plotly")
+        ])
+
+    def create_capas_page(
+        self,
+        metricas_base: List[dict],
+        capas_infra: List[str],
+        capas_recursos: List[str],
+    ) -> html.Div:
+        """
+        Construye la página de capas superpuestas con controles para
+        capa base (coropleta) y overlays (infraestructura/recursos).
+        """
+        control_panel = dbc.Card(dbc.CardBody([
+            html.H6("Capa base (coropleta)", className="mb-2"),
+            dcc.RadioItems(
+                id="capa-base-metrica",
+                options=metricas_base,
+                value=metricas_base[0]['value'],
+                labelStyle={'display': 'block', 'marginBottom': '4px',
+                            'fontSize': '0.85rem'},
+            ),
+            html.Hr(),
+            html.H6("Opacidad base", className="mb-2"),
+            dcc.Slider(
+                id="opacidad-base", min=0.1, max=1.0, value=0.6, step=0.1,
+                marks={0.1: '10%', 0.5: '50%', 1.0: '100%'},
+            ),
+            html.Hr(),
+            html.H6("Infraestructura", className="mb-2"),
+            dcc.Checklist(
+                id="overlay-infra",
+                options=[{'label': c.replace('_', ' ').title(), 'value': c}
+                         for c in capas_infra],
+                value=[],
+                labelStyle={'display': 'block', 'marginBottom': '4px',
+                            'fontSize': '0.85rem'},
+            ),
+            html.Hr(),
+            html.H6("Recursos Naturales", className="mb-2"),
+            dcc.Checklist(
+                id="overlay-recursos",
+                options=[{'label': c.replace('_', ' ').title(), 'value': c}
+                         for c in capas_recursos],
+                value=[],
+                labelStyle={'display': 'block', 'marginBottom': '4px',
+                            'fontSize': '0.85rem'},
+            ),
+        ]), className="shadow-sm", style={"borderRadius": "10px"})
+
+        return html.Div([
+            html.H3("Capas Superpuestas"),
+            html.P("Combina la coropleta base con capas de puntos",
+                   className="text-muted mb-3"),
+            dbc.Row([
+                dbc.Col(control_panel, md=3),
+                dbc.Col(html.Div(id="mapa-capas"), md=9),
+            ]),
         ])
 
     def create_infraestructura_page(self, categorias: List[str]) -> html.Div:

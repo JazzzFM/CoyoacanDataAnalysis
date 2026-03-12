@@ -389,3 +389,81 @@ class FiguresGenerator:
             showlegend=False,
         )
         return fig
+
+    @staticmethod
+    def generar_mapa_multicapa(
+        gdf_base: GeoDataFrame,
+        columna_valor: str,
+        columna_nombre: str,
+        opacidad_base: float,
+        gdf_infra: GeoDataFrame,
+        cats_infra: list,
+        gdf_recursos: GeoDataFrame,
+        cats_recursos: list,
+    ) -> Optional[go.Figure]:
+        """
+        Genera un mapa multicapa: coropleta base + overlays de scatter.
+        Reutiliza generar_mapa_categorico para los overlays.
+        """
+        if gdf_base is None or gdf_base.empty:
+            return None
+
+        # --- Capa base: coropleta ---
+        fig = px.choropleth_mapbox(
+            data_frame=gdf_base,
+            geojson=gdf_base.__geo_interface__,
+            locations=gdf_base.index,
+            color=columna_valor,
+            mapbox_style='open-street-map',
+            zoom=12,
+            center={"lat": 19.332608, "lon": -99.143209},
+            color_continuous_scale='Viridis',
+            opacity=opacidad_base,
+            hover_name=columna_nombre,
+        )
+        fig.update_traces(
+            marker_line_color='white',
+            marker_line_width=0.5,
+            hovertemplate=(
+                '<b>%{hovertext}</b><br>'
+                f'{columna_valor.replace("_", " ").title()}: '
+                '%{z:,.1f}<extra></extra>'
+            ),
+        )
+
+        # --- Overlays: transferir traces de generar_mapa_categorico ---
+        if cats_infra:
+            overlay = FiguresGenerator.generar_mapa_categorico(
+                gdf=gdf_infra, columna_cat='subcategoria',
+                columna_nombre='nombre', titulo='',
+                categorias_visibles=cats_infra)
+            if overlay:
+                for trace in overlay.data:
+                    fig.add_trace(trace)
+
+        if cats_recursos:
+            overlay = FiguresGenerator.generar_mapa_categorico(
+                gdf=gdf_recursos, columna_cat='categoria',
+                columna_nombre='nombre', titulo='',
+                categorias_visibles=cats_recursos)
+            if overlay:
+                for trace in overlay.data:
+                    fig.add_trace(trace)
+
+        # --- Layout final ---
+        titulo_metrica = columna_valor.replace('_', ' ').title()
+        fig.update_layout(
+            template='plotly_white',
+            title=dict(text=f'Capas: {titulo_metrica} + overlays',
+                       x=0.5, y=0.95, xanchor='center', yanchor='top'),
+            margin=dict(r=0, t=60, l=0, b=0),
+            legend=dict(
+                yanchor="top", y=0.99, xanchor="left", x=0.01,
+                bgcolor="rgba(255,255,255,0.8)",
+            ),
+            hoverlabel=dict(bgcolor="white", font_size=12,
+                            font_family="Arial"),
+            coloraxis_colorbar=dict(
+                title=titulo_metrica, len=0.6, thickness=15),
+        )
+        return fig

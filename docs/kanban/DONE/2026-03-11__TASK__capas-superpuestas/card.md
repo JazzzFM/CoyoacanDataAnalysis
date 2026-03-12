@@ -1,8 +1,8 @@
 ---
 id: "TASK-2026-03-09__capas-superpuestas"
 title: "Visualización multi-capa con toggle de rubros"
-status: "BACKLOG"
-phase: "Plan"
+status: "DONE"
+phase: "Done"
 scope_in:
   - "Toggle de capas tipo Google Maps: activar/desactivar rubros sobre el mapa"
   - "Capa base: polígonos coropléticos (demografía o uso de suelo)"
@@ -33,3 +33,4 @@ plan_phase: 3
 
 # Updates
 - 2026-03-09 - Created.
+- 2026-03-11 - Implemented. Página /dashboard/capas con RadioItems para capa base (5 métricas de indicadores_colonia), slider opacidad, checklists para 13 subcategorías infraestructura y 3 categorías recursos naturales. Reutiliza generar_mapa_categorico para overlays.

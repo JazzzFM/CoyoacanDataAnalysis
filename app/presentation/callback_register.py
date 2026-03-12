@@ -56,6 +56,7 @@ class CallbackRegister:
         self._register_metrica_callback(app)
         self._register_map_callback(app)
         self._register_categorico_callback(app)
+        self._register_capas_callback(app)
 
     def _register_page_callback(self, app: Dash) -> None:
         """
@@ -125,6 +126,33 @@ class CallbackRegister:
                     .initialize_dataset(self.table_controller.recursos_naturales)
                 cats = sorted(self.data['categoria'].unique())
                 return self.page_builder.create_recursos_naturales_page(cats)
+
+            elif pathname == "/dashboard/capas":
+                self._capas_indicadores = self.data_service\
+                    .initialize_dataset(self.table_controller.ambientales)
+                self._capas_infra = self.data_service\
+                    .initialize_dataset(self.table_controller.infraestructura)
+                self._capas_recursos = self.data_service\
+                    .initialize_dataset(self.table_controller.recursos_naturales)
+
+                metricas_base = [
+                    {'label': 'Densidad vivienda (viv/ha)',
+                     'value': 'densidad_viv_ha'},
+                    {'label': 'Área verde por hab. (m²)',
+                     'value': 'm2_area_verde_hab'},
+                    {'label': 'Viviendas desocupadas (%)',
+                     'value': 'pct_viviendas_desocupadas'},
+                    {'label': 'Valor del suelo ($/m²)',
+                     'value': 'valor_suelo_pesos'},
+                    {'label': 'Espacio público por hab. (m²)',
+                     'value': 'm2_espacio_pub_hab'},
+                ]
+                cats_infra = sorted(
+                    self._capas_infra['subcategoria'].unique())
+                cats_rec = sorted(
+                    self._capas_recursos['categoria'].unique())
+                return self.page_builder.create_capas_page(
+                    metricas_base, cats_infra, cats_rec)
 
             else:
                 return html.Div([
@@ -431,6 +459,9 @@ class CallbackRegister:
         elif pathname == "/dashboard/recursos-naturales":
             return "recursos_naturales"
 
+        elif pathname == "/dashboard/capas":
+            return "capas"
+
         return "demograficos"
 
     def _register_categorico_callback(self, app: Dash) -> None:
@@ -472,6 +503,42 @@ class CallbackRegister:
 
             if figura is None:
                 return html.Div("No se encontraron datos para las categorías seleccionadas.")
+
+            return dcc.Graph(
+                figure=figura,
+                style={'width': '100%', 'height': '800px'}
+            )
+
+    def _register_capas_callback(self, app: Dash) -> None:
+        """
+        Callback para generar mapa multicapa: coropleta base + overlays.
+        """
+
+        @app.callback(
+            Output("mapa-capas", "children"),
+            [Input("capa-base-metrica", "value"),
+             Input("opacidad-base", "value"),
+             Input("overlay-infra", "value"),
+             Input("overlay-recursos", "value")]
+        )
+        def actualizar_mapa_capas(metrica_base, opacidad,
+                                  cats_infra, cats_rec):
+            if not metrica_base:
+                return html.Div("Seleccione una métrica base.")
+
+            figura = FiguresGenerator.generar_mapa_multicapa(
+                gdf_base=self._capas_indicadores,
+                columna_valor=metrica_base,
+                columna_nombre='colonia',
+                opacidad_base=opacidad or 0.6,
+                gdf_infra=self._capas_infra,
+                cats_infra=cats_infra or [],
+                gdf_recursos=self._capas_recursos,
+                cats_recursos=cats_rec or [],
+            )
+
+            if figura is None:
+                return html.Div("No se pudo generar el mapa.")
 
             return dcc.Graph(
                 figure=figura,
