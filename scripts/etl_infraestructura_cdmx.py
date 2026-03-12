@@ -238,6 +238,47 @@ def main():
             gdf['nombre'] = 'Tianguis'
         infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
 
+    # Metrobus estaciones
+    gdf = cargar_y_filtrar(
+        f"{BASE_DIR}/metrobus/mb_shp/Metrobus_estaciones.shp",
+        gdf_coyoacan, "metrobus_estaciones")
+    if gdf is not None and len(gdf) > 0:
+        gdf['categoria'] = 'transporte'
+        gdf['subcategoria'] = 'metrobus_estacion'
+        gdf['nombre'] = gdf.get('NOMBRE', 'Estacion Metrobus')
+        infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
+
+    # Metrobus lineas
+    gdf = cargar_y_filtrar(
+        f"{BASE_DIR}/metrobus/mb_shp/Metrobus_lineas.shp",
+        gdf_coyoacan, "metrobus_lineas")
+    if gdf is not None and len(gdf) > 0:
+        gdf['categoria'] = 'transporte'
+        gdf['subcategoria'] = 'metrobus_linea'
+        gdf['nombre'] = gdf.get('LINEA', 'Linea Metrobus')
+        infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
+
+    # Ecobici
+    gdf = cargar_y_filtrar(
+        f"{BASE_DIR}/ecobici/cicloestaciones_ecobici/cicloestaciones_ecobici.shp",
+        gdf_coyoacan, "ecobici")
+    if gdf is not None and len(gdf) > 0:
+        gdf['categoria'] = 'transporte'
+        gdf['subcategoria'] = 'ecobici'
+        gdf['nombre'] = 'Cicloestacion Ecobici #' + gdf['num_cicloe'].astype(str)
+        infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
+
+    # Accidentes peatones
+    ruta_acc = buscar_shp(f"{BASE_DIR}/accidentes_peatones", "accidentado_peaton.shp")
+    gdf = cargar_y_filtrar(
+        ruta_acc or f"{BASE_DIR}/accidentes_peatones/accidentado_peaton.shp",
+        gdf_coyoacan, "accidentes_peatones")
+    if gdf is not None and len(gdf) > 0:
+        gdf['categoria'] = 'seguridad'
+        gdf['subcategoria'] = 'accidente_peaton'
+        gdf['nombre'] = 'Accidente peatonal'
+        infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
+
     # Subir infraestructura
     if infra_frames:
         gdf_infra = pd.concat(infra_frames, ignore_index=True)
