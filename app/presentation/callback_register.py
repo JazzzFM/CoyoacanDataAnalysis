@@ -1,6 +1,7 @@
 import logging
 import random
 from typing import Optional
+import pandas as pd
 from pandas import DataFrame, merge
 from dash import Dash, html, dcc, Input, Output
 from app.services.data_service import DataService
@@ -206,6 +207,42 @@ class CallbackRegister:
                 html.P(str(e), className="text-danger"),
             ])
 
+    def _enriquecer_datos_tooltip(self, gdf, metrica):
+        """
+        Agrega columnas de ranking, desviación vs promedio y semáforo
+        para tooltips enriquecidos en mapas coropléticos.
+        """
+        if metrica not in gdf.columns or gdf[metrica].isna().all():
+            return gdf
+
+        gdf = gdf.copy()
+        serie = gdf[metrica].fillna(0)
+        media = serie.mean()
+        total = len(gdf)
+
+        # Ranking (1 = valor más alto)
+        gdf['_tooltip_ranking'] = serie.rank(
+            ascending=False, method='min').astype(int)
+        gdf['_tooltip_total'] = total
+        gdf['_tooltip_media'] = round(media, 1)
+
+        # Desviación porcentual vs promedio (pre-formateada con signo)
+        if media != 0:
+            desv = ((serie - media) / media * 100)
+            gdf['_tooltip_desviacion'] = desv.apply(
+                lambda x: f"+{x:.0f}%" if x >= 0 else f"{x:.0f}%")
+        else:
+            gdf['_tooltip_desviacion'] = "N/A"
+
+        # Semáforo por terciles
+        p33 = serie.quantile(0.33)
+        p66 = serie.quantile(0.66)
+        gdf['_tooltip_semaforo'] = serie.apply(
+            lambda v: "🟢 Bajo" if v <= p33
+            else ("🟡 Medio" if v <= p66 else "🔴 Alto"))
+
+        return gdf
+
     def _register_metrica_callback(self, app: Dash) -> None:
         """
         Callback para actualizar el dropdown de 'metrica' según el 
@@ -329,21 +366,21 @@ class CallbackRegister:
             if gdf_filtrado.empty:
                 return html.Div("No se encontraron datos para los filtros seleccionados.")
 
+            # Enriquecemos con ranking, desviación y semáforo
+            gdf_filtrado = self._enriquecer_datos_tooltip(
+                gdf_filtrado, metrica)
+
             # Generamos un título dinámico
             titulo = f"Distribución de {metrica} del {anio} por {gran} en Coyoacán"
 
-            # Determinamos columnas para hover
-            hover_cols = [
-                c for c in gdf_filtrado.columns
-                if c not in ("geometry",
-                             "GEOM_MANZANA",
-                             "GEOM_AGEB",
-                             "GEOM_COLONIA"
-                             "anio") and\
-                    gdf_filtrado[c].dtype.kind in ["i", "f"]
+            # Columnas de enriquecimiento para tooltip
+            enrichment_cols = [
+                '_tooltip_ranking', '_tooltip_total', '_tooltip_media',
+                '_tooltip_desviacion', '_tooltip_semaforo',
             ]
-            # Agregamos cualquier columna adicional definida en el dataclass
-            hover_cols += filters.tooltip_cols
+
+            # Determinamos columnas para hover (tooltip_cols del rubro + enriquecimiento)
+            hover_cols = list(filters.tooltip_cols) + enrichment_cols
 
             # Seleccionamos aleatoriamente un esquema de color
             esquema_select = random.choice(AVAILABLE_COLOR_SCHEMES)
@@ -354,7 +391,8 @@ class CallbackRegister:
                 columna_metrica = metrica,
                 titulo_colorbar = dataset_key,
                 hover_columns = hover_cols,
-                esquema_color = esquema_select
+                esquema_color = esquema_select,
+                nombre_hover = filters.nombre_zona_col,
             )
 
             figura = FiguresGenerator\

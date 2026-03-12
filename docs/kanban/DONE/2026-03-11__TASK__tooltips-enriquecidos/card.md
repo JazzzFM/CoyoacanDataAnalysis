@@ -1,8 +1,8 @@
 ---
 id: "TASK-2026-03-09__tooltips-enriquecidos"
 title: "Tooltips enriquecidos con ranking, contexto y semáforo"
-status: "BACKLOG"
-phase: "Plan"
+status: "DONE"
+phase: "Done"
 scope_in:
   - "Mostrar ranking de la zona en el tooltip ('Colonia #7 de 153')"
   - "Mostrar desviación vs promedio municipal ('+45% vs media')"
@@ -45,3 +45,4 @@ Uso suelo: 78% Habitacional
 
 # Updates
 - 2026-03-09 - Created.
+- 2026-03-11 - Implemented. Ranking (#X de N), desviación vs promedio (+X%), semáforo por terciles (🟢🟡🔴), nombre de zona como header, tooltip adaptativo por rubro. Aplica a los 5 rubros numéricos.

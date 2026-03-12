@@ -119,9 +119,11 @@ class DashboardFilters:
     granularidad: str = "manzana"
     metrica: Optional[str] = None
     tooltip_cols: List = field(init = False)
+    nombre_zona_col: Optional[str] = field(init = False)
 
     def __post_init__(self):
         if self.type_data == "demograficos":
+            self.nombre_zona_col = "NOMBRE_COLONIA"
             self.tooltip_cols = [
                 "ID_AGEB",
                 "NOMBRE_COLONIA",
@@ -130,6 +132,7 @@ class DashboardFilters:
                 "area_km2"
             ]
         elif self.type_data == "edafologicos":
+            self.nombre_zona_col = "NOMBRE_COLONIA"
             self.tooltip_cols = [
                 'ID_AGEB',
                 "NOMBRE_COLONIA",
@@ -139,6 +142,7 @@ class DashboardFilters:
                 'ALTURA'
             ]
         elif self.type_data == "servicios":
+            self.nombre_zona_col = "nombre"
             self.tooltip_cols = [
                 'nombre',
                 'categoria',
@@ -146,6 +150,7 @@ class DashboardFilters:
                 'personal_ocupado'
             ]
         elif self.type_data == "electorales":
+            self.nombre_zona_col = "seccion"
             self.tooltip_cols = [
                 'seccion',
                 'distrito_federal',
@@ -158,6 +163,7 @@ class DashboardFilters:
                 'area_km2'
             ]
         elif self.type_data == "ambientales":
+            self.nombre_zona_col = "colonia"
             self.tooltip_cols = [
                 'colonia',
                 'densidad_viv_ha',
@@ -171,16 +177,19 @@ class DashboardFilters:
                 'num_servicios_turismo',
             ]
         elif self.type_data == "infraestructura":
+            self.nombre_zona_col = "nombre"
             self.tooltip_cols = [
                 'nombre',
                 'categoria',
                 'subcategoria',
             ]
         elif self.type_data == "recursos_naturales":
+            self.nombre_zona_col = "nombre"
             self.tooltip_cols = [
                 'nombre',
                 'categoria',
                 'tipo',
             ]
         else:
+            self.nombre_zona_col = None
             self.tooltip_cols = []

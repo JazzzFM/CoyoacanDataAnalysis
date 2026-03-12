@@ -38,49 +38,92 @@ class FiguresGenerator:
         # -------------------------------------------
         # Preparar las columnas para el tooltip
         # -------------------------------------------
-        custom_data_cols = [col for col in config.hover_columns\
-                             if col in data.columns and \
-                                col != config.columna_metrica]
+        custom_data_cols = [col for col in config.hover_columns
+                           if col in data.columns
+                           and col != config.columna_metrica]
+
+        # Separar columnas de enriquecimiento de las regulares
+        enrichment_prefix = '_tooltip_'
+        col_idx = {c: i for i, c in enumerate(custom_data_cols)}
+        has_enrichment = any(c.startswith(enrichment_prefix)
+                            for c in custom_data_cols)
 
         # Crear el mapa coroplético con Plotly Express
         fig = px.choropleth_mapbox(
-            data_frame = data,
-            geojson = data.__geo_interface__,     # GeoJSON directamente desde la geometría
-            locations = data.index,               # Usa los índices como identificadores
-            color = config.columna_metrica,       # Columna principal que define el color
-            mapbox_style = config.mapbox_style,   # Estilo de Mapbox
-            zoom = config.zoom,
-            center = {"lat": config.latitud_centro, 
+            data_frame=data,
+            geojson=data.__geo_interface__,
+            locations=data.index,
+            color=config.columna_metrica,
+            mapbox_style=config.mapbox_style,
+            zoom=config.zoom,
+            center={"lat": config.latitud_centro,
                     "lon": config.longitud_centro},
             color_continuous_scale=config.esquema_color,
             opacity=0.7,
-            hover_name=(
-                config.nombre_hover 
-                if config.nombre_hover 
-                else config.columna_metrica
-            ),
-            custom_data = custom_data_cols        # Para construir un hover_template más detallado
+            hover_name=(config.nombre_hover
+                        if config.nombre_hover
+                        else config.columna_metrica),
+            custom_data=custom_data_cols,
         )
 
         # -------------------------------------------
-        # Construir un hover_template "a la medida"
+        # Construir hover_template
         # -------------------------------------------
-        # Se aprovecha %{z} para mostrar el valor de la métrica principal
-        # (la que define el color).
-        # 
-        #  
-        hover_template = (
-            f"• <b>{config.columna_metrica}:</b> %{{z}}<br>"
-        )
-        for i, col in enumerate(custom_data_cols):
-            hover_template += f"• <b>{col}:</b> %{{customdata[{i}]}}<br>"
-        hover_template += "<extra></extra>"
+        metrica_label = config.columna_metrica.replace('_', ' ').title()
+
+        if has_enrichment:
+            # Template enriquecido con ranking, desviación y semáforo
+            hover_template = f"<b>%{{hovertext}}</b><br>──────────────<br>"
+
+            # Métrica principal + semáforo
+            hover_template += f"<b>{metrica_label}:</b> %{{z:,.1f}}"
+            if '_tooltip_semaforo' in col_idx:
+                hover_template += (
+                    f"  %{{customdata[{col_idx['_tooltip_semaforo']}]}}")
+            hover_template += "<br>"
+
+            # Ranking
+            if '_tooltip_ranking' in col_idx and '_tooltip_total' in col_idx:
+                hover_template += (
+                    f"<b>Ranking:</b> "
+                    f"#%{{customdata[{col_idx['_tooltip_ranking']}]}} "
+                    f"de %{{customdata[{col_idx['_tooltip_total']}]}}<br>")
+
+            # Desviación vs promedio
+            if '_tooltip_desviacion' in col_idx and '_tooltip_media' in col_idx:
+                hover_template += (
+                    f"<b>vs Promedio:</b> "
+                    f"%{{customdata[{col_idx['_tooltip_desviacion']}]}} "
+                    f"(media: %{{customdata[{col_idx['_tooltip_media']}]:,.1f}})"
+                    f"<br>")
+
+            # Columnas regulares del rubro
+            regular_cols = [c for c in custom_data_cols
+                           if not c.startswith(enrichment_prefix)
+                           and c != config.nombre_hover]
+            if regular_cols:
+                hover_template += "──────────────<br>"
+                for col in regular_cols:
+                    label = col.replace('_', ' ').title()
+                    idx = col_idx[col]
+                    hover_template += (
+                        f"<b>{label}:</b> %{{customdata[{idx}]}}<br>")
+
+            hover_template += "<extra></extra>"
+        else:
+            # Template original (fallback)
+            hover_template = (
+                f"• <b>{config.columna_metrica}:</b> %{{z}}<br>")
+            for i, col in enumerate(custom_data_cols):
+                hover_template += (
+                    f"• <b>{col}:</b> %{{customdata[{i}]}}<br>")
+            hover_template += "<extra></extra>"
 
         # Se aplica el hover_template a la traza
         fig.update_traces(
             hovertemplate=hover_template,
-            marker_line_color='white',  # Borde fino en blanco para delimitar polígonos
-            marker_line_width=0.5
+            marker_line_color='white',
+            marker_line_width=0.5,
         )
 
         # Ajustes finales de diseño
