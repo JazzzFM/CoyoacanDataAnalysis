@@ -166,6 +166,9 @@ class DashboardFilters:
                 'pct_viviendas_desocupadas',
                 'incremento_abs_poblacion',
                 'cat_urbanismo_social',
+                'valor_suelo_rango',
+                'cat_calidad_vivienda',
+                'num_servicios_turismo',
             ]
         elif self.type_data == "infraestructura":
             self.tooltip_cols = [

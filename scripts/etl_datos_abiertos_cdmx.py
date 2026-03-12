@@ -124,6 +124,28 @@ DATASETS = {
             "DESCRIPCIO": "descripcion_sismica",
         }
     },
+    "ue_turismo": {
+        "shp": "ue_turismo/servicios_turismo/rc_8.shp",
+        "filtro_col": "alcaldia",
+        "filtro_val": "COYOACAN",
+        "cols_id": ["colonia", "cve_col"],
+        "cols_datos": {
+            "NoSERVTUR": "num_servicios_turismo",
+            "C_NoSERVTU": "cat_servicios_turismo",
+        }
+    },
+    "calidad_vivienda": {
+        "shp": "calidad_vivienda/calidad_espacios/us_7.shp",
+        "filtro_col": "alcaldia",
+        "filtro_val": "COYOACAN",
+        "cols_id": ["colonia", "cve_col"],
+        "cols_datos": {
+            "ids_cev_su": "indice_calidad_viv_superior",
+            "ids_cev_me": "indice_calidad_viv_media",
+            "rangos_cc": "rango_calidad_vivienda",
+            "C_IDS_cev": "cat_calidad_vivienda",
+        }
+    },
 }
 
 
@@ -250,6 +272,21 @@ def main():
     # Merge datos con geometria
     gdf_final = gdf_geom.merge(df_merged, on=['colonia', 'cve_col'], how='left')
     gdf_final = gdf_final.set_geometry('geometry')
+
+    # Spatial join: valor unitario del suelo (5 zonas citywide -> asignar a colonias)
+    ruta_valor = os.path.join(BASE_DIR, "valor_suelo/vus_promedio/valores_unitarios.shp")
+    if os.path.exists(ruta_valor):
+        logger.info("  Enriqueciendo con valor unitario del suelo (spatial join)...")
+        gdf_valor = gpd.read_file(ruta_valor)
+        if gdf_valor.crs != gdf_final.crs:
+            gdf_valor = gdf_valor.to_crs(gdf_final.crs)
+        gdf_final = gpd.sjoin(gdf_final, gdf_valor[['RANGOS', 'VALOR', 'geometry']],
+                              how='left', predicate='intersects')
+        gdf_final = gdf_final.rename(columns={'RANGOS': 'valor_suelo_rango', 'VALOR': 'valor_suelo_pesos'})
+        gdf_final = gdf_final.drop(columns=['index_right'], errors='ignore')
+        # Desduplicar por colonia (una colonia puede caer en >1 zona)
+        gdf_final = gdf_final.drop_duplicates(subset=['colonia', 'cve_col'], keep='first')
+        logger.info(f"  Valor suelo asignado: {gdf_final['valor_suelo_rango'].notna().sum()} colonias")
 
     logger.info(f"  GeoDataFrame final: {len(gdf_final)} colonias, {len(gdf_final.columns)} columnas")
 
