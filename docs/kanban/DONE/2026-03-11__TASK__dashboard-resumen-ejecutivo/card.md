@@ -1,8 +1,8 @@
 ---
 id: "TASK-2026-03-09__dashboard-resumen-ejecutivo"
 title: "Dashboard de resumen ejecutivo con KPIs y estadísticas clave"
-status: "BACKLOG"
-phase: "Plan"
+status: "DONE"
+phase: "Done"
 scope_in:
   - "Página Home con KPIs principales de Coyoacán"
   - "Cards con cifras clave: población total, colonias, AGEBs, manzanas"
@@ -59,3 +59,4 @@ plan_phase: 2
 
 # Updates
 - 2026-03-09 - Created.
+- 2026-03-11 - Implemented. KPIs dinámicos (620K hab, 153 colonias, 156 AGEBs, 4813 manzanas, 7 rubros), mapa overview por densidad, top 10 barras, donut uso suelo, 5 hallazgos auto-generados.

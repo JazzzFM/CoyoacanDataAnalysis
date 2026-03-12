@@ -67,7 +67,7 @@ class CallbackRegister:
         )
         def render_page_content(pathname: str) -> html.Div:
             if pathname in ("/dashboard/", "/dashboard"):
-                return html.Div("¡Bienvenido a la página de inicio!")
+                return self._build_inicio_page()
             
             elif pathname == "/dashboard/demograficos":
                 self.data = self.data_service\
@@ -131,6 +131,80 @@ class CallbackRegister:
                     html.Hr(),
                     html.P(f"La ruta {pathname} no fue reconocida."),
                 ])
+
+    def _build_inicio_page(self) -> html.Div:
+        """
+        Construye la página de resumen ejecutivo cargando datos y generando
+        KPIs, figuras y hallazgos dinámicamente.
+        """
+        try:
+            indicadores = self.data_service.initialize_dataset(
+                self.table_controller.ambientales)
+            edafologicos = self.data_service.initialize_dataset(
+                self.table_controller.edafologicos)
+
+            # --- KPIs ---
+            pob_total = indicadores['poblacion_2010'].sum()
+            n_colonias = len(indicadores)
+            n_agebs = self.poligonos_ageb['ID_AGEB'].nunique()
+            n_manzanas = self.poligonos_manzana['ID_MANZANA'].nunique()
+
+            kpis = [
+                (f"{pob_total:,.0f}", "Habitantes", "Censo 2010"),
+                (f"{n_colonias:,}", "Colonias", ""),
+                (f"{n_agebs:,}", "AGEBs", ""),
+                (f"{n_manzanas:,}", "Manzanas", ""),
+                ("7", "Rubros", "de análisis"),
+            ]
+
+            # --- Figuras ---
+            fig_mapa = FiguresGenerator.generar_mapa_resumen(
+                gdf=indicadores,
+                columna_valor='densidad_viv_ha',
+                columna_nombre='colonia',
+                titulo='Densidad de vivienda por colonia (viv/ha)',
+            )
+
+            fig_barras = FiguresGenerator.generar_barras_horizontales(
+                df=indicadores,
+                columna_nombre='colonia',
+                columna_valor='densidad_viv_ha',
+                titulo='Top 10 colonias por densidad',
+            )
+
+            fig_dona = FiguresGenerator.generar_dona(
+                df=edafologicos,
+                columna_categoria='USO_SUELO',
+                titulo='Distribución de uso de suelo',
+            )
+
+            # --- Hallazgos dinámicos ---
+            col_max = indicadores.loc[indicadores['densidad_viv_ha'].idxmax()]
+            media_dens = indicadores['densidad_viv_ha'].mean()
+            uso_dom = edafologicos['USO_SUELO'].value_counts()
+            pct_hab = (uso_dom.iloc[0] / len(edafologicos)) * 100
+            media_verde = indicadores['m2_area_verde_hab'].mean()
+
+            hallazgos = [
+                f"{col_max['colonia']} es la colonia más densa: "
+                f"{col_max['densidad_viv_ha']:.0f} viv/ha "
+                f"({col_max['densidad_viv_ha'] / media_dens:.1f}x el promedio)",
+                f"Densidad promedio municipal: {media_dens:.1f} viv/ha",
+                f"El {pct_hab:.0f}% del suelo es {uso_dom.index[0].lower()}",
+                f"Promedio de área verde: {media_verde:.1f} m² por habitante",
+                f"Población total (2010): {pob_total:,.0f} habitantes "
+                f"en {n_colonias} colonias",
+            ]
+
+            return self.page_builder.create_inicio_page(
+                kpis, fig_mapa, fig_barras, fig_dona, hallazgos)
+
+        except Exception as e:
+            logger.error(f"Error construyendo resumen ejecutivo: {e}")
+            return html.Div([
+                html.H4("Error cargando resumen ejecutivo"),
+                html.P(str(e), className="text-danger"),
+            ])
 
     def _register_metrica_callback(self, app: Dash) -> None:
         """

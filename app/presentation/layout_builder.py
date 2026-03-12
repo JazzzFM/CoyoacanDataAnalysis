@@ -1,6 +1,7 @@
 from dash import html, dcc
-from typing import List
+from typing import List, Tuple
 import dash_bootstrap_components as dbc
+import plotly.graph_objects as go
 
 class LayoutBuilder:
     """
@@ -57,6 +58,73 @@ class LayoutBuilder:
             dcc.Location(id="url"),
             sidebar,
             content
+        ])
+
+    def _create_kpi_card(self, valor: str, titulo: str, subtitulo: str = "") -> dbc.Card:
+        """
+        Crea una card de KPI con valor destacado, título y subtítulo opcional.
+        """
+        return dbc.Card(
+            dbc.CardBody([
+                html.H3(valor, className="text-primary mb-0",
+                         style={"fontWeight": "bold", "fontSize": "1.6rem"}),
+                html.P(titulo, className="text-muted mb-0",
+                       style={"fontSize": "0.85rem"}),
+                html.Small(subtitulo, className="text-muted") if subtitulo else None,
+            ]),
+            className="text-center shadow-sm h-100",
+            style={"borderRadius": "10px"},
+        )
+
+    def create_inicio_page(
+        self,
+        kpis: List[Tuple[str, str, str]],
+        fig_mapa: go.Figure,
+        fig_barras: go.Figure,
+        fig_dona: go.Figure,
+        hallazgos: List[str],
+    ) -> html.Div:
+        """
+        Construye la página de resumen ejecutivo con KPIs, mapa overview,
+        charts y hallazgos clave.
+        """
+        kpi_cards = dbc.Row(
+            [dbc.Col(self._create_kpi_card(v, t, s), md=True)
+             for v, t, s in kpis],
+            className="mb-4 g-3",
+        )
+
+        charts_row = dbc.Row([
+            dbc.Col(
+                dcc.Graph(figure=fig_mapa,
+                          config={'displayModeBar': False}),
+                md=7,
+            ),
+            dbc.Col([
+                dcc.Graph(figure=fig_barras,
+                          config={'displayModeBar': False}),
+                dcc.Graph(figure=fig_dona,
+                          config={'displayModeBar': False}),
+            ], md=5),
+        ], className="mb-4")
+
+        hallazgos_card = dbc.Card(
+            dbc.CardBody([
+                html.H5("Hallazgos clave", className="mb-3"),
+                html.Ul([html.Li(h, className="mb-1") for h in hallazgos]),
+            ]),
+            className="shadow-sm",
+            style={"borderRadius": "10px"},
+        )
+
+        return html.Div([
+            html.H3("Coyoacán — Resumen Ejecutivo", className="mb-1"),
+            html.P("Análisis territorial integral de la alcaldía",
+                   className="text-muted mb-3"),
+            html.Hr(),
+            kpi_cards,
+            charts_row,
+            hallazgos_card,
         ])
 
     def create_demograficos_page(self, anios: List[int]) -> html.Div:

@@ -7,6 +7,7 @@ Genera visualizaciones (e.g. mapas coropléticos) con Plotly.
 import warnings
 import geopandas as gpd
 from geopandas import GeoDataFrame
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from typing import Any, Optional, List
@@ -232,4 +233,116 @@ class FiguresGenerator:
             hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
         )
 
+        return fig
+
+    @staticmethod
+    def generar_mapa_resumen(
+        gdf: GeoDataFrame,
+        columna_valor: str,
+        columna_nombre: str,
+        titulo: str,
+    ) -> Optional[go.Figure]:
+        """
+        Genera un mapa coroplético compacto para el resumen ejecutivo.
+        """
+        if gdf is None or gdf.empty:
+            return None
+
+        fig = px.choropleth_mapbox(
+            data_frame=gdf,
+            geojson=gdf.__geo_interface__,
+            locations=gdf.index,
+            color=columna_valor,
+            mapbox_style='open-street-map',
+            zoom=12,
+            center={"lat": 19.332608, "lon": -99.143209},
+            color_continuous_scale='Viridis',
+            opacity=0.7,
+            hover_name=columna_nombre,
+        )
+        fig.update_traces(
+            marker_line_color='white',
+            marker_line_width=0.5,
+            hovertemplate=(
+                '<b>%{hovertext}</b><br>'
+                f'{columna_valor}: %{{z:.1f}}'
+                '<extra></extra>'
+            ),
+        )
+        fig.update_layout(
+            title=dict(text=titulo, x=0.5, xanchor='center'),
+            template='plotly_white',
+            margin=dict(r=0, t=40, l=0, b=0),
+            height=460,
+            coloraxis_colorbar=dict(
+                title=columna_valor.replace('_', ' ').title(),
+                len=0.6,
+                thickness=15,
+            ),
+        )
+        return fig
+
+    @staticmethod
+    def generar_barras_horizontales(
+        df: pd.DataFrame,
+        columna_nombre: str,
+        columna_valor: str,
+        titulo: str,
+        n: int = 10,
+    ) -> Optional[go.Figure]:
+        """
+        Genera un bar chart horizontal con las top N entidades.
+        """
+        if df is None or df.empty:
+            return None
+
+        top = df.nlargest(n, columna_valor)[[columna_nombre, columna_valor]].copy()
+        top = top.sort_values(columna_valor, ascending=True)
+
+        fig = px.bar(
+            top, x=columna_valor, y=columna_nombre,
+            orientation='h',
+            color=columna_valor,
+            color_continuous_scale='Viridis',
+            title=titulo,
+        )
+        fig.update_layout(
+            template='plotly_white',
+            margin=dict(r=10, t=40, l=0, b=0),
+            height=225,
+            showlegend=False,
+            yaxis_title=None,
+            xaxis_title=None,
+            coloraxis_showscale=False,
+        )
+        return fig
+
+    @staticmethod
+    def generar_dona(
+        df: pd.DataFrame,
+        columna_categoria: str,
+        titulo: str,
+        n_categorias: int = 8,
+    ) -> Optional[go.Figure]:
+        """
+        Genera un donut chart con la distribución de una columna categórica.
+        """
+        if df is None or df.empty:
+            return None
+
+        conteos = df[columna_categoria].value_counts().head(n_categorias)
+        fig = px.pie(
+            values=conteos.values,
+            names=conteos.index,
+            title=titulo,
+            hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Set2,
+        )
+        fig.update_traces(textinfo='percent+label', textfont_size=10)
+        fig.update_layout(
+            template='plotly_white',
+            margin=dict(r=10, t=40, l=10, b=10),
+            height=225,
+            showlegend=False,
+        )
         return fig
