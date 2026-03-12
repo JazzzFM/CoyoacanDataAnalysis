@@ -47,6 +47,7 @@ class LayoutBuilder:
                     dbc.NavLink("Infraestructura", href="/dashboard/infraestructura", active="exact"),
                     dbc.NavLink("Recursos Naturales", href="/dashboard/recursos-naturales", active="exact"),
                     html.Hr(),
+                    dbc.NavLink("Vulnerabilidad", href="/dashboard/vulnerabilidad", active="exact"),
                     dbc.NavLink("Capas", href="/dashboard/capas", active="exact"),
                     dbc.NavLink("Comparador", href="/dashboard/comparador", active="exact"),
                 ],
@@ -243,6 +244,53 @@ class LayoutBuilder:
                 dbc.Col(control_panel, md=3),
                 dbc.Col(html.Div(id="mapa-capas"), md=9),
             ]),
+        ])
+
+    def create_vulnerabilidad_page(self, componentes: List[dict]) -> html.Div:
+        """
+        Construye la página del índice de vulnerabilidad territorial con
+        mapa coroplético, tabla de ranking y panel de desglose por componentes.
+        componentes: lista de dicts con 'label', 'variable', 'peso', 'invertir'
+        """
+        pesos_panel = dbc.Card(dbc.CardBody([
+            html.H6("Ponderación de componentes", className="mb-3"),
+            *[
+                html.Div([
+                    html.Div([
+                        html.Span(c['label'], style={"fontSize": "0.82rem"}),
+                        html.Span(
+                            f"{int(c['peso'] * 100)}%",
+                            className="text-muted",
+                            style={"fontSize": "0.78rem", "float": "right"},
+                        ),
+                    ]),
+                    dcc.Slider(
+                        id={"type": "peso-vuln", "index": i},
+                        min=0, max=40, value=int(c['peso'] * 100), step=5,
+                        marks={0: '0', 20: '20', 40: '40'},
+                        tooltip={"placement": "bottom", "always_visible": False},
+                    ),
+                ], className="mb-2")
+                for i, c in enumerate(componentes)
+            ],
+            html.Hr(),
+            dbc.Button("Recalcular", id="btn-recalcular-vuln",
+                       color="primary", size="sm", className="w-100"),
+        ]), className="shadow-sm", style={"borderRadius": "10px"})
+
+        return html.Div([
+            html.H3("Índice de Vulnerabilidad Territorial"),
+            html.P("Score compuesto 0-100 por colonia — quintiles de vulnerabilidad",
+                   className="text-muted mb-3"),
+            dbc.Row([
+                dbc.Col(pesos_panel, md=3),
+                dbc.Col([
+                    html.Div(id="mapa-vulnerabilidad"),
+                    html.Div(id="desglose-vulnerabilidad", className="mt-3"),
+                ], md=9),
+            ]),
+            html.Hr(),
+            html.Div(id="tabla-ranking-vulnerabilidad"),
         ])
 
     def create_infraestructura_page(self, categorias: List[str]) -> html.Div:

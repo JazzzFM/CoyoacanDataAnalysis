@@ -1,8 +1,8 @@
 ---
 id: "TASK-2026-03-09__indice-vulnerabilidad-territorial"
 title: "Crear índice compuesto de vulnerabilidad territorial"
-status: "BACKLOG"
-phase: "Research"
+status: "DONE"
+phase: "Implemented"
 scope_in:
   - "Definir variables del índice (demografía + uso suelo + servicios)"
   - "Normalizar variables (min-max o z-score)"
@@ -51,3 +51,4 @@ plan_phase: 2
 
 # Updates
 - 2026-03-09 - Created.
+- 2026-03-11 - Implemented: 7 componentes min-max, pesos ajustables via sliders, mapa RdYlGn_r, tabla ranking top 20, desglose barras apiladas top 10.

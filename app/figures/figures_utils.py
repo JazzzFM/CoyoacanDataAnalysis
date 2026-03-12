@@ -451,6 +451,79 @@ class FiguresGenerator:
         return fig
 
     @staticmethod
+    def generar_mapa_vulnerabilidad(
+        gdf: GeoDataFrame,
+        columna_score: str,
+        columna_quintil: str,
+        columna_nombre: str,
+        componentes_cols: List[str],
+    ) -> Optional[go.Figure]:
+        """
+        Genera un mapa coroplético de vulnerabilidad con paleta divergente
+        verde→rojo (RdYlGn_r) y tooltip con score + quintil + componentes.
+        """
+        if gdf is None or gdf.empty:
+            return None
+
+        custom_cols = [columna_quintil] + componentes_cols
+        custom_cols = [c for c in custom_cols if c in gdf.columns]
+        col_idx = {c: i for i, c in enumerate(custom_cols)}
+
+        fig = px.choropleth_mapbox(
+            data_frame=gdf,
+            geojson=gdf.__geo_interface__,
+            locations=gdf.index,
+            color=columna_score,
+            mapbox_style='open-street-map',
+            zoom=12,
+            center={"lat": 19.332608, "lon": -99.143209},
+            color_continuous_scale='RdYlGn_r',
+            range_color=[0, 100],
+            opacity=0.8,
+            hover_name=columna_nombre,
+            custom_data=custom_cols,
+        )
+
+        # Hover template enriquecido
+        hover = "<b>%{hovertext}</b><br>──────────────<br>"
+        hover += "<b>Score vulnerabilidad:</b> %{z:.1f}/100<br>"
+        if columna_quintil in col_idx:
+            hover += (
+                f"<b>Clasificación:</b> "
+                f"%{{customdata[{col_idx[columna_quintil]}]}}<br>")
+        hover += "──────────────<br>"
+        for comp_col in componentes_cols:
+            if comp_col in col_idx:
+                label = comp_col.replace('_norm', '').replace('_', ' ').title()
+                hover += (
+                    f"<b>{label}:</b> "
+                    f"%{{customdata[{col_idx[comp_col]}]:.1f}}<br>")
+        hover += "<extra></extra>"
+
+        fig.update_traces(
+            hovertemplate=hover,
+            marker_line_color='white',
+            marker_line_width=0.8,
+        )
+
+        fig.update_layout(
+            template='plotly_white',
+            title=dict(
+                text='Índice de Vulnerabilidad Territorial — Coyoacán',
+                x=0.5, y=0.95, xanchor='center', yanchor='top'),
+            margin=dict(r=0, t=60, l=0, b=0),
+            height=600,
+            hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
+            coloraxis_colorbar=dict(
+                title="Vulnerabilidad",
+                tickvals=[0, 25, 50, 75, 100],
+                ticktext=["0 (baja)", "25", "50", "75", "100 (alta)"],
+                len=0.7, thickness=15,
+            ),
+        )
+        return fig
+
+    @staticmethod
     def generar_mapa_multicapa(
         gdf_base: GeoDataFrame,
         columna_valor: str,

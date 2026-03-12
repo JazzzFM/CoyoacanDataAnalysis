@@ -1,9 +1,10 @@
 import logging
 import random
-from typing import Optional
+from typing import Optional, List
+import numpy as np
 import pandas as pd
 from pandas import DataFrame, merge
-from dash import Dash, html, dcc, Input, Output
+from dash import Dash, html, dcc, Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 from app.services.data_service import DataService
 from app.domain.domain_models import TableController
@@ -14,6 +15,7 @@ from app.domain.domain_models import (
     AVAILABLE_COLOR_SCHEMES
 )
 
+import plotly.graph_objects as go
 from app.figures.figures_utils import FiguresGenerator
 from app.presentation.layout_builder import LayoutBuilder
 
@@ -58,6 +60,7 @@ class CallbackRegister:
         self._register_map_callback(app)
         self._register_categorico_callback(app)
         self._register_capas_callback(app)
+        self._register_vulnerabilidad_callback(app)
         self._register_comparador_callback(app)
 
     def _register_page_callback(self, app: Dash) -> None:
@@ -128,6 +131,12 @@ class CallbackRegister:
                     .initialize_dataset(self.table_controller.recursos_naturales)
                 cats = sorted(self.data['categoria'].unique())
                 return self.page_builder.create_recursos_naturales_page(cats)
+
+            elif pathname == "/dashboard/vulnerabilidad":
+                self._vuln_data = self.data_service\
+                    .initialize_dataset(self.table_controller.ambientales)
+                return self.page_builder.create_vulnerabilidad_page(
+                    self._COMPONENTES_VULNERABILIDAD)
 
             elif pathname == "/dashboard/comparador":
                 self._comparador_data = self.data_service\
@@ -471,6 +480,9 @@ class CallbackRegister:
         elif pathname == "/dashboard/capas":
             return "capas"
 
+        elif pathname == "/dashboard/vulnerabilidad":
+            return "vulnerabilidad"
+
         elif pathname == "/dashboard/comparador":
             return "comparador"
 
@@ -557,6 +569,90 @@ class CallbackRegister:
                 style={'width': '100%', 'height': '800px'}
             )
 
+    # --- Componentes del índice de vulnerabilidad territorial ---
+    # Cada componente: label para UI, variable en datos_indicadores_colonia,
+    # peso default (suma = 1.0), invertir (True = más alto → menos vulnerable)
+    _COMPONENTES_VULNERABILIDAD = [
+        {'label': 'Densidad vivienda',       'variable': 'densidad_viv_ha',
+         'peso': 0.15, 'invertir': False},
+        {'label': 'Viviendas desocupadas',   'variable': 'pct_viviendas_desocupadas',
+         'peso': 0.15, 'invertir': False},
+        {'label': 'Área verde por hab.',     'variable': 'm2_area_verde_hab',
+         'peso': 0.15, 'invertir': True},
+        {'label': 'Espacio público por hab.','variable': 'm2_espacio_pub_hab',
+         'peso': 0.10, 'invertir': True},
+        {'label': 'Deterioro valor suelo',   'variable': 'deterioro_valor',
+         'peso': 0.15, 'invertir': False},
+        {'label': 'Calidad vivienda',        'variable': 'indice_calidad_viv_superior',
+         'peso': 0.15, 'invertir': True},
+        {'label': 'Servicios turismo',       'variable': 'num_servicios_turismo',
+         'peso': 0.15, 'invertir': True},
+    ]
+
+    _QUINTIL_LABELS = [
+        'Muy baja', 'Baja', 'Media', 'Alta', 'Muy alta'
+    ]
+
+    def _calcular_indice_vulnerabilidad(
+        self, gdf: pd.DataFrame, pesos_custom: Optional[List[float]] = None
+    ) -> pd.DataFrame:
+        """
+        Calcula el índice de vulnerabilidad territorial por colonia.
+        1. Normalización min-max de cada variable
+        2. Inversión de variables donde más alto = menos vulnerable
+        3. Promedio ponderado → score 0-100
+        4. Clasificación en quintiles
+        """
+        gdf = gdf.copy()
+        componentes = self._COMPONENTES_VULNERABILIDAD
+
+        if pesos_custom and len(pesos_custom) == len(componentes):
+            total_peso = sum(pesos_custom) or 1
+            pesos = [p / total_peso for p in pesos_custom]
+        else:
+            pesos = [c['peso'] for c in componentes]
+
+        cols_norm = []
+        for i, comp in enumerate(componentes):
+            col = comp['variable']
+            col_norm = f"{col}_norm"
+            cols_norm.append(col_norm)
+
+            if col not in gdf.columns:
+                gdf[col_norm] = 0.5
+                continue
+
+            serie = gdf[col].fillna(0).astype(float)
+            vmin, vmax = serie.min(), serie.max()
+            if vmax > vmin:
+                normalizado = (serie - vmin) / (vmax - vmin)
+            else:
+                normalizado = pd.Series(0.5, index=gdf.index)
+
+            if comp['invertir']:
+                normalizado = 1 - normalizado
+
+            gdf[col_norm] = normalizado
+
+        # Score ponderado 0-100
+        gdf['score_vulnerabilidad'] = sum(
+            gdf[col_norm] * peso * 100
+            for col_norm, peso in zip(cols_norm, pesos)
+        )
+
+        # Quintiles
+        gdf['quintil_vulnerabilidad'] = pd.qcut(
+            gdf['score_vulnerabilidad'], q=5,
+            labels=self._QUINTIL_LABELS,
+            duplicates='drop',
+        )
+
+        # Ranking
+        gdf['ranking_vulnerabilidad'] = gdf['score_vulnerabilidad'].rank(
+            ascending=False, method='min').astype(int)
+
+        return gdf, cols_norm
+
     _METRICAS_RADAR = [
         'densidad_viv_ha', 'm2_area_verde_hab', 'm2_espacio_pub_hab',
         'pct_viviendas_desocupadas', 'valor_suelo_pesos',
@@ -578,6 +674,119 @@ class CallbackRegister:
         ('Calidad vivienda', 'cat_calidad_vivienda'),
         ('Urbanismo social', 'cat_urbanismo_social'),
     ]
+
+    def _register_vulnerabilidad_callback(self, app: Dash) -> None:
+        """
+        Callback para calcular y visualizar el índice de vulnerabilidad.
+        Responde al botón recalcular con pesos ajustados por sliders.
+        """
+
+        @app.callback(
+            [Output("mapa-vulnerabilidad", "children"),
+             Output("tabla-ranking-vulnerabilidad", "children"),
+             Output("desglose-vulnerabilidad", "children")],
+            [Input("btn-recalcular-vuln", "n_clicks")],
+            [State({"type": "peso-vuln", "index": ALL}, "value")],
+        )
+        def actualizar_vulnerabilidad(n_clicks, pesos_slider):
+            if not hasattr(self, '_vuln_data') or self._vuln_data is None:
+                msg = html.Div("Carga la página de vulnerabilidad primero.")
+                return msg, msg, msg
+
+            # Convertir pesos de slider (0-40 enteros) a fracciones
+            pesos_custom = None
+            if pesos_slider and any(p is not None for p in pesos_slider):
+                pesos_custom = [float(p or 0) for p in pesos_slider]
+
+            try:
+                gdf_vuln, cols_norm = self._calcular_indice_vulnerabilidad(
+                    self._vuln_data, pesos_custom)
+            except Exception as e:
+                logger.error(f"Error calculando vulnerabilidad: {e}")
+                msg = html.Div(f"Error: {e}", className="text-danger")
+                return msg, msg, msg
+
+            # --- Mapa ---
+            fig = FiguresGenerator.generar_mapa_vulnerabilidad(
+                gdf=gdf_vuln,
+                columna_score='score_vulnerabilidad',
+                columna_quintil='quintil_vulnerabilidad',
+                columna_nombre='colonia',
+                componentes_cols=cols_norm,
+            )
+            mapa = (dcc.Graph(figure=fig, style={'width': '100%', 'height': '600px'})
+                    if fig else html.Div("No se pudo generar el mapa."))
+
+            # --- Tabla de ranking ---
+            ranking = gdf_vuln.sort_values(
+                'score_vulnerabilidad', ascending=False
+            ).head(20)
+
+            header = [html.Th("#"), html.Th("Colonia"),
+                      html.Th("Score"), html.Th("Quintil")]
+            rows = []
+            for _, row in ranking.iterrows():
+                quintil = str(row['quintil_vulnerabilidad'])
+                color_badge = {
+                    'Muy alta': 'danger', 'Alta': 'warning',
+                    'Media': 'info', 'Baja': 'success',
+                    'Muy baja': 'success',
+                }.get(quintil, 'secondary')
+                rows.append(html.Tr([
+                    html.Td(row['ranking_vulnerabilidad']),
+                    html.Td(html.B(row['colonia'])),
+                    html.Td(f"{row['score_vulnerabilidad']:.1f}"),
+                    html.Td(dbc.Badge(quintil, color=color_badge)),
+                ]))
+
+            tabla = html.Div([
+                html.H5("Ranking de vulnerabilidad (Top 20)"),
+                dbc.Table(
+                    [html.Thead(html.Tr(header)), html.Tbody(rows)],
+                    bordered=True, striped=True, hover=True, size="sm",
+                    className="mt-2",
+                ),
+            ])
+
+            # --- Desglose de componentes (barras apiladas top 10) ---
+            top10 = gdf_vuln.nlargest(10, 'score_vulnerabilidad')
+            componentes = self._COMPONENTES_VULNERABILIDAD
+
+            if pesos_custom:
+                total = sum(pesos_custom) or 1
+                pesos_frac = [p / total for p in pesos_custom]
+            else:
+                pesos_frac = [c['peso'] for c in componentes]
+
+            fig_desglose = go.Figure()
+            for i, comp in enumerate(componentes):
+                col_norm = cols_norm[i]
+                if col_norm in top10.columns:
+                    valores = top10[col_norm] * pesos_frac[i] * 100
+                    fig_desglose.add_trace(go.Bar(
+                        y=top10['colonia'],
+                        x=valores,
+                        name=comp['label'],
+                        orientation='h',
+                    ))
+
+            fig_desglose.update_layout(
+                barmode='stack',
+                template='plotly_white',
+                title=dict(text='Desglose por componente — Top 10',
+                           x=0.5, xanchor='center'),
+                margin=dict(r=10, t=40, l=0, b=0),
+                height=350,
+                xaxis_title='Contribución al score',
+                yaxis=dict(autorange='reversed'),
+                legend=dict(orientation='h', y=-0.2, xanchor='center', x=0.5,
+                            font=dict(size=10)),
+            )
+
+            desglose = dcc.Graph(figure=fig_desglose,
+                                 config={'displayModeBar': False})
+
+            return mapa, tabla, desglose
 
     def _register_comparador_callback(self, app: Dash) -> None:
         """
