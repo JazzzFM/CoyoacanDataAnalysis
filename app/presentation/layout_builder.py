@@ -48,6 +48,7 @@ class LayoutBuilder:
                     dbc.NavLink("Recursos Naturales", href="/dashboard/recursos-naturales", active="exact"),
                     html.Hr(),
                     dbc.NavLink("Capas", href="/dashboard/capas", active="exact"),
+                    dbc.NavLink("Comparador", href="/dashboard/comparador", active="exact"),
                 ],
                 vertical=True,
                 pills=True,
@@ -162,6 +163,29 @@ class LayoutBuilder:
             html.H3("Rubro: Tablero Ambiental"),
             self.create_filter_row(anios),
             html.Div(id="mapa-plotly")
+        ])
+
+    def create_comparador_page(self, colonias: List[str]) -> html.Div:
+        """
+        Construye la página del comparador de colonias con dropdown
+        multi-select, radar chart y tabla comparativa.
+        """
+        return html.Div([
+            html.H3("Comparador de Colonias"),
+            html.P("Selecciona 2-3 colonias para comparar sus indicadores",
+                   className="text-muted mb-3"),
+            dcc.Dropdown(
+                id="comparador-colonias",
+                options=[{'label': c, 'value': c} for c in colonias],
+                value=colonias[:2] if len(colonias) >= 2 else colonias,
+                multi=True,
+                placeholder="Selecciona colonias...",
+                style={"marginBottom": "20px"},
+            ),
+            dbc.Row([
+                dbc.Col(html.Div(id="comparador-radar"), md=6),
+                dbc.Col(html.Div(id="comparador-tabla"), md=6),
+            ]),
         ])
 
     def create_capas_page(

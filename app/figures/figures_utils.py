@@ -391,6 +391,66 @@ class FiguresGenerator:
         return fig
 
     @staticmethod
+    def generar_radar_comparativo(
+        df: pd.DataFrame,
+        colonias: list,
+        metricas: list,
+        labels: list,
+    ) -> Optional[go.Figure]:
+        """
+        Genera un radar chart comparativo para 2-3 colonias.
+        Los valores se normalizan a 0-100 por métrica.
+        """
+        if df is None or df.empty or not colonias:
+            return None
+
+        # Filtrar solo métricas numéricas disponibles
+        metricas_validas = []
+        labels_validas = []
+        for m, l in zip(metricas, labels):
+            if m in df.columns and df[m].dtype.kind in ('i', 'f'):
+                metricas_validas.append(m)
+                labels_validas.append(l)
+
+        if len(metricas_validas) < 3:
+            return None
+
+        fig = go.Figure()
+        for colonia in colonias:
+            row = df[df['colonia'] == colonia]
+            if row.empty:
+                continue
+            valores_norm = []
+            for m in metricas_validas:
+                val = row[m].values[0]
+                col_min = df[m].min()
+                col_max = df[m].max()
+                if col_max > col_min:
+                    norm = (val - col_min) / (col_max - col_min) * 100
+                else:
+                    norm = 50
+                valores_norm.append(round(norm, 1))
+
+            fig.add_trace(go.Scatterpolar(
+                r=valores_norm + [valores_norm[0]],
+                theta=labels_validas + [labels_validas[0]],
+                fill='toself',
+                name=colonia,
+                opacity=0.6,
+            ))
+
+        fig.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+            template='plotly_white',
+            title=dict(text='Perfil comparativo', x=0.5, xanchor='center'),
+            margin=dict(r=30, t=50, l=30, b=30),
+            height=500,
+            legend=dict(orientation='h', yanchor='bottom', y=-0.15,
+                        xanchor='center', x=0.5),
+        )
+        return fig
+
+    @staticmethod
     def generar_mapa_multicapa(
         gdf_base: GeoDataFrame,
         columna_valor: str,

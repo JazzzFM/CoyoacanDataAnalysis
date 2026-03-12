@@ -4,6 +4,7 @@ from typing import Optional
 import pandas as pd
 from pandas import DataFrame, merge
 from dash import Dash, html, dcc, Input, Output
+import dash_bootstrap_components as dbc
 from app.services.data_service import DataService
 from app.domain.domain_models import TableController
 
@@ -57,6 +58,7 @@ class CallbackRegister:
         self._register_map_callback(app)
         self._register_categorico_callback(app)
         self._register_capas_callback(app)
+        self._register_comparador_callback(app)
 
     def _register_page_callback(self, app: Dash) -> None:
         """
@@ -126,6 +128,13 @@ class CallbackRegister:
                     .initialize_dataset(self.table_controller.recursos_naturales)
                 cats = sorted(self.data['categoria'].unique())
                 return self.page_builder.create_recursos_naturales_page(cats)
+
+            elif pathname == "/dashboard/comparador":
+                self._comparador_data = self.data_service\
+                    .initialize_dataset(self.table_controller.ambientales)
+                colonias = sorted(
+                    self._comparador_data['colonia'].unique())
+                return self.page_builder.create_comparador_page(colonias)
 
             elif pathname == "/dashboard/capas":
                 self._capas_indicadores = self.data_service\
@@ -462,6 +471,9 @@ class CallbackRegister:
         elif pathname == "/dashboard/capas":
             return "capas"
 
+        elif pathname == "/dashboard/comparador":
+            return "comparador"
+
         return "demograficos"
 
     def _register_categorico_callback(self, app: Dash) -> None:
@@ -544,3 +556,83 @@ class CallbackRegister:
                 figure=figura,
                 style={'width': '100%', 'height': '800px'}
             )
+
+    _METRICAS_RADAR = [
+        'densidad_viv_ha', 'm2_area_verde_hab', 'm2_espacio_pub_hab',
+        'pct_viviendas_desocupadas', 'valor_suelo_pesos',
+        'num_servicios_turismo', 'indice_calidad_viv_superior',
+    ]
+    _LABELS_RADAR = [
+        'Densidad', 'Área verde', 'Espacio público',
+        'Viv. desocupadas', 'Valor suelo',
+        'Turismo', 'Calidad vivienda',
+    ]
+    _METRICAS_TABLA = [
+        ('Población 2010', 'poblacion_2010'),
+        ('Densidad (viv/ha)', 'densidad_viv_ha'),
+        ('Área verde (m²/hab)', 'm2_area_verde_hab'),
+        ('Espacio público (m²/hab)', 'm2_espacio_pub_hab'),
+        ('Viv. desocupadas (%)', 'pct_viviendas_desocupadas'),
+        ('Valor suelo ($/m²)', 'valor_suelo_pesos'),
+        ('Servicios turismo', 'num_servicios_turismo'),
+        ('Calidad vivienda', 'cat_calidad_vivienda'),
+        ('Urbanismo social', 'cat_urbanismo_social'),
+    ]
+
+    def _register_comparador_callback(self, app: Dash) -> None:
+        """
+        Callback para comparador de colonias: radar chart + tabla.
+        """
+
+        @app.callback(
+            [Output("comparador-radar", "children"),
+             Output("comparador-tabla", "children")],
+            [Input("comparador-colonias", "value")]
+        )
+        def actualizar_comparador(colonias_sel):
+            if not colonias_sel or len(colonias_sel) < 2:
+                msg = html.Div("Selecciona al menos 2 colonias.",
+                               className="text-muted")
+                return msg, msg
+
+            colonias_sel = colonias_sel[:3]
+            df = self._comparador_data
+
+            # Radar chart
+            fig_radar = FiguresGenerator.generar_radar_comparativo(
+                df=df, colonias=colonias_sel,
+                metricas=self._METRICAS_RADAR,
+                labels=self._LABELS_RADAR)
+
+            radar_div = (dcc.Graph(figure=fig_radar,
+                                   config={'displayModeBar': False})
+                         if fig_radar
+                         else html.Div("Error generando radar."))
+
+            # Tabla comparativa
+            header = [html.Th("Indicador")] + [
+                html.Th(c, style={"fontSize": "0.85rem"})
+                for c in colonias_sel]
+            rows = []
+            for label, col in self._METRICAS_TABLA:
+                cells = [html.Td(html.B(label))]
+                for colonia in colonias_sel:
+                    row = df[df['colonia'] == colonia]
+                    if row.empty or col not in row.columns:
+                        cells.append(html.Td("—"))
+                    else:
+                        val = row[col].values[0]
+                        if isinstance(val, float):
+                            cells.append(html.Td(f"{val:,.1f}"))
+                        else:
+                            cells.append(html.Td(str(val)))
+                rows.append(html.Tr(cells))
+
+            tabla = dbc.Table(
+                [html.Thead(html.Tr(header)),
+                 html.Tbody(rows)],
+                bordered=True, striped=True, hover=True, size="sm",
+                className="mt-3",
+            )
+
+            return radar_div, tabla

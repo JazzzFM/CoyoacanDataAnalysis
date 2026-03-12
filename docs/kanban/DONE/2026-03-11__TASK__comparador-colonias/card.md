@@ -1,8 +1,8 @@
 ---
 id: "TASK-2026-03-09__comparador-colonias"
 title: "Comparador side-by-side de colonias/AGEBs"
-status: "BACKLOG"
-phase: "Plan"
+status: "DONE"
+phase: "Done"
 scope_in:
   - "Seleccionar 2-3 colonias para comparar"
   - "Tabla comparativa con métricas demográficas y de uso de suelo"
