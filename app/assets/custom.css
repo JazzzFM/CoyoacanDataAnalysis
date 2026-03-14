@@ -1,6 +1,5 @@
 /* === Coyoacán Dashboard — Custom Styles === */
 
-/* Paleta: verde oscuro Coyoacán + acentos cálidos */
 :root {
     --coyoacan-dark: #1a3c34;
     --coyoacan-green: #2d6a4f;
@@ -17,36 +16,13 @@ body {
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* --- Sidebar --- */
-#page-content {
-    padding-top: 1.5rem !important;
+/* --- Sidebar (by ID) --- */
+#sidebar-coyoacan {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.2) transparent;
 }
 
-/* Sidebar background & styling */
-body > div > div:first-child {
-    background: linear-gradient(180deg, var(--coyoacan-dark) 0%, var(--coyoacan-green) 100%) !important;
-    border-right: none !important;
-    box-shadow: 2px 0 12px rgba(0,0,0,0.15);
-}
-
-body > div > div:first-child h2 {
-    color: #fff !important;
-    font-weight: 700;
-    font-size: 1.6rem !important;
-    letter-spacing: -0.5px;
-}
-
-body > div > div:first-child .lead {
-    color: rgba(255,255,255,0.65) !important;
-    font-size: 0.82rem !important;
-}
-
-body > div > div:first-child hr {
-    border-color: rgba(255,255,255,0.15) !important;
-}
-
-/* Nav links */
-.nav-pills .nav-link {
+#sidebar-coyoacan .nav-pills .nav-link {
     color: rgba(255,255,255,0.75) !important;
     border-radius: 8px !important;
     margin-bottom: 2px;
@@ -55,12 +31,12 @@ body > div > div:first-child hr {
     transition: all 0.15s ease;
 }
 
-.nav-pills .nav-link:hover {
+#sidebar-coyoacan .nav-pills .nav-link:hover {
     color: #fff !important;
-    background-color: rgba(255,255,255,0.1) !important;
+    background-color: rgba(255,255,255,0.12) !important;
 }
 
-.nav-pills .nav-link.active {
+#sidebar-coyoacan .nav-pills .nav-link.active {
     color: #fff !important;
     background-color: var(--coyoacan-light) !important;
     font-weight: 600;
@@ -79,7 +55,6 @@ body > div > div:first-child hr {
     box-shadow: var(--shadow-md) !important;
 }
 
-/* KPI values */
 .card .text-primary {
     color: var(--coyoacan-green) !important;
 }
@@ -165,24 +140,20 @@ h5, h6 {
 }
 
 /* --- Scrollbar (webkit) --- */
-::-webkit-scrollbar {
-    width: 6px;
+#sidebar-coyoacan::-webkit-scrollbar {
+    width: 5px;
 }
 
-::-webkit-scrollbar-track {
+#sidebar-coyoacan::-webkit-scrollbar-track {
     background: transparent;
 }
 
-::-webkit-scrollbar-thumb {
-    background: rgba(45,106,79,0.3);
+#sidebar-coyoacan::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
     border-radius: 3px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(45,106,79,0.5);
-}
-
-/* --- Responsive tweaks --- */
+/* --- Responsive --- */
 @media (max-width: 768px) {
     #page-content {
         margin-left: 0 !important;

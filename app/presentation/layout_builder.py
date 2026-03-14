@@ -21,8 +21,9 @@ class LayoutBuilder:
             "bottom": 0,
             "width": "16rem",
             "padding": "2rem 1rem",
-            "background-color": "#f8f9fa",
+            "background": "linear-gradient(180deg, #1a3c34 0%, #2d6a4f 100%)",
             "overflow-y": "auto",
+            "boxShadow": "2px 0 12px rgba(0,0,0,0.15)",
         }
 
         content_style = {
@@ -32,9 +33,11 @@ class LayoutBuilder:
         }
 
         sidebar = html.Div([
-            html.H2("Coyoacán", className="display-4"),
-            html.Hr(),
-            html.P("Análisis Territorial Georreferenciado", className="lead"),
+            html.H2("Coyoacán", style={"color": "#fff", "fontWeight": "700",
+                                        "fontSize": "1.6rem", "letterSpacing": "-0.5px"}),
+            html.Hr(style={"borderColor": "rgba(255,255,255,0.15)"}),
+            html.P("Análisis Territorial Georreferenciado",
+                   style={"color": "rgba(255,255,255,0.65)", "fontSize": "0.82rem"}),
             dbc.Nav([
                     dbc.NavLink("Inicio", href="/dashboard/", active="exact"),
 
@@ -67,7 +70,7 @@ class LayoutBuilder:
                 vertical=True,
                 pills=True,
             ),
-        ], style=sidebar_style)
+        ], id="sidebar-coyoacan", style=sidebar_style)
 
         content = html.Div(id="page-content", style=content_style)
 
