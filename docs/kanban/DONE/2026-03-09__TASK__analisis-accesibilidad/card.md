@@ -1,8 +1,8 @@
 ---
 id: "TASK-2026-03-09__analisis-accesibilidad"
 title: "Análisis de accesibilidad a servicios (desiertos urbanos)"
-status: "BACKLOG"
-phase: "Research"
+status: "DONE"
+phase: "Validate"
 scope_in:
   - "Calcular distancia de cada manzana al servicio más cercano (salud, educación, comercio)"
   - "Generar buffers/isócronas de 5/10/15 min caminando (400m/800m/1200m)"
@@ -61,3 +61,4 @@ GROUP BY m."ID_MANZANA";
 
 # Updates
 - 2026-03-09 - Created.
+- 2026-03-14 - Implementado como /dashboard/accesibilidad. Usa nearest-neighbor con GeoPandas/Shapely en vez de PostGIS ST_Distance (datos ya en memoria). Granularidad por colonia (no manzana). 9 categorías DENUE. Commit 4d937e3.
