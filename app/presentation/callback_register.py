@@ -15,6 +15,7 @@ from app.domain.domain_models import (
     AVAILABLE_COLOR_SCHEMES
 )
 
+import plotly.express as px
 import plotly.graph_objects as go
 from app.figures.figures_utils import FiguresGenerator
 from app.presentation.layout_builder import LayoutBuilder
@@ -62,6 +63,9 @@ class CallbackRegister:
         self._register_capas_callback(app)
         self._register_vulnerabilidad_callback(app)
         self._register_comparador_callback(app)
+        self._register_perfil_callback(app)
+        self._register_correlaciones_callback(app)
+        self._register_riesgo_callback(app)
 
     def _register_page_callback(self, app: Dash) -> None:
         """
@@ -179,6 +183,25 @@ class CallbackRegister:
                     self._capas_recursos['categoria'].unique())
                 return self.page_builder.create_capas_page(
                     metricas_base, cats_infra, cats_rec)
+
+            elif pathname == "/dashboard/perfil":
+                self._perfil_data = self.data_service\
+                    .initialize_dataset(self.table_controller.ambientales)
+                colonias = sorted(self._perfil_data['colonia'].unique())
+                return self.page_builder.create_perfil_page(colonias)
+
+            elif pathname == "/dashboard/correlaciones":
+                self._corr_data = self.data_service\
+                    .initialize_dataset(self.table_controller.ambientales)
+                return self.page_builder.create_correlaciones_page(
+                    self._METRICAS_CORRELACIONES)
+
+            elif pathname == "/dashboard/riesgo":
+                self._riesgo_indicadores = self.data_service\
+                    .initialize_dataset(self.table_controller.ambientales)
+                self._riesgo_infra = self.data_service\
+                    .initialize_dataset(self.table_controller.infraestructura)
+                return self.page_builder.create_riesgo_page()
 
             else:
                 return html.Div([
@@ -494,6 +517,15 @@ class CallbackRegister:
         elif pathname == "/dashboard/comparador":
             return "comparador"
 
+        elif pathname == "/dashboard/perfil":
+            return "perfil"
+
+        elif pathname == "/dashboard/correlaciones":
+            return "correlaciones"
+
+        elif pathname == "/dashboard/riesgo":
+            return "riesgo"
+
         return "demograficos"
 
     def _register_categorico_callback(self, app: Dash) -> None:
@@ -671,6 +703,52 @@ class CallbackRegister:
             ascending=False, method='min').astype(int)
 
         return gdf, cols_norm
+
+    # --- Métricas para correlaciones y perfil ---
+    _METRICAS_CORRELACIONES = [
+        ('Densidad vivienda (viv/ha)', 'densidad_viv_ha'),
+        ('Área verde por hab. (m²)', 'm2_area_verde_hab'),
+        ('Espacio público por hab. (m²)', 'm2_espacio_pub_hab'),
+        ('Viviendas desocupadas (%)', 'pct_viviendas_desocupadas'),
+        ('Valor suelo ($/m²)', 'valor_suelo_pesos'),
+        ('Servicios turismo', 'num_servicios_turismo'),
+        ('Calidad vivienda', 'indice_calidad_viv_superior'),
+        ('Temperatura nocturna (°C)', 'temp_nocturna_media'),
+        ('Viviendas con internet (%)', 'pct_viv_internet'),
+        ('Consumo agua (m³)', 'consumo_agua_prom_m3'),
+        ('Escuelas básicas', 'num_escuelas_basicas'),
+        ('Tasa crecimiento 10-20', 'tasa_crecimiento_2010_2020'),
+        ('Deterioro valor suelo', 'deterioro_valor'),
+        ('Rezago espacio público', 'rezago_espacio_publico'),
+        ('Población 2010', 'poblacion_2010'),
+        ('UE comerciales', 'ue_comerciales'),
+    ]
+
+    _PERFIL_DIMENSIONES = [
+        ('Densidad', [
+            ('Densidad viv/ha', 'densidad_viv_ha'),
+            ('Población 2010', 'poblacion_2010'),
+            ('Tasa crecimiento 10-20', 'tasa_crecimiento_2010_2020'),
+        ]),
+        ('Vivienda', [
+            ('Viv. desocupadas (%)', 'pct_viviendas_desocupadas'),
+            ('Calidad vivienda', 'indice_calidad_viv_superior'),
+            ('Deterioro valor suelo', 'deterioro_valor'),
+            ('Valor suelo ($/m²)', 'valor_suelo_pesos'),
+        ]),
+        ('Medio Ambiente', [
+            ('Área verde (m²/hab)', 'm2_area_verde_hab'),
+            ('Espacio público (m²/hab)', 'm2_espacio_pub_hab'),
+            ('Temp. nocturna (°C)', 'temp_nocturna_media'),
+            ('Consumo agua (m³)', 'consumo_agua_prom_m3'),
+        ]),
+        ('Servicios', [
+            ('Escuelas básicas', 'num_escuelas_basicas'),
+            ('Servicios turismo', 'num_servicios_turismo'),
+            ('UE comerciales', 'ue_comerciales'),
+            ('Internet (%)', 'pct_viv_internet'),
+        ]),
+    ]
 
     _METRICAS_RADAR = [
         'densidad_viv_ha', 'm2_area_verde_hab', 'm2_espacio_pub_hab',
@@ -871,3 +949,352 @@ class CallbackRegister:
             )
 
             return radar_div, tabla
+
+    # ── PERFIL DE COLONIA ─────────────────────────────────────────
+    def _register_perfil_callback(self, app: Dash) -> None:
+        @app.callback(
+            Output("perfil-contenido", "children"),
+            [Input("perfil-colonia-select", "value")]
+        )
+        def actualizar_perfil(colonia):
+            if not colonia or not hasattr(self, '_perfil_data'):
+                return html.Div("Selecciona una colonia.", className="text-muted")
+
+            df = self._perfil_data
+            row = df[df['colonia'] == colonia]
+            if row.empty:
+                return html.Div("Colonia no encontrada.", className="text-danger")
+
+            row = row.iloc[0]
+            total = len(df)
+
+            # KPI cards con ranking
+            kpi_defs = [
+                ('densidad_viv_ha', 'Densidad', 'viv/ha'),
+                ('m2_area_verde_hab', 'Área verde', 'm²/hab'),
+                ('valor_suelo_pesos', 'Valor suelo', '$/m²'),
+                ('pct_viv_internet', 'Internet', '%'),
+            ]
+            kpis = []
+            for col, label, unidad in kpi_defs:
+                if col in df.columns and pd.notna(row.get(col)):
+                    val = row[col]
+                    rank = int(df[col].rank(ascending=False, method='min')[row.name])
+                    kpis.append(dbc.Col(dbc.Card(dbc.CardBody([
+                        html.H4(f"{val:,.1f}", className="text-primary mb-0"),
+                        html.P(f"{label} ({unidad})", className="text-muted mb-0",
+                               style={"fontSize": "0.8rem"}),
+                        html.Small(f"#{rank} de {total}",
+                                   className="text-secondary"),
+                    ]), className="text-center shadow-sm",
+                        style={"borderRadius": "10px"}), md=3))
+
+            # Radar individual
+            fig_radar = FiguresGenerator.generar_radar_comparativo(
+                df=df, colonias=[colonia],
+                metricas=self._METRICAS_RADAR,
+                labels=self._LABELS_RADAR)
+            if fig_radar:
+                fig_radar.update_layout(
+                    title=dict(text=f'Perfil — {colonia}'),
+                    height=400)
+
+            # Semáforo por dimensión
+            dimension_cards = []
+            for dim_nombre, indicadores in self._PERFIL_DIMENSIONES:
+                items = []
+                for label, col in indicadores:
+                    if col not in df.columns:
+                        continue
+                    val = row.get(col)
+                    if pd.isna(val):
+                        items.append(html.Li(f"{label}: sin dato",
+                                             style={"fontSize": "0.82rem"}))
+                        continue
+                    serie = df[col].fillna(0)
+                    p33, p66 = serie.quantile(0.33), serie.quantile(0.66)
+                    semaforo = "🟢" if val <= p33 else ("🟡" if val <= p66 else "🔴")
+                    rank = int(serie.rank(ascending=False, method='min')[row.name])
+                    items.append(html.Li([
+                        html.Span(f"{semaforo} {label}: ",
+                                  style={"fontSize": "0.82rem"}),
+                        html.B(f"{val:,.1f}", style={"fontSize": "0.82rem"}),
+                        html.Span(f"  (#{rank})",
+                                  className="text-muted",
+                                  style={"fontSize": "0.75rem"}),
+                    ]))
+                dimension_cards.append(dbc.Col(dbc.Card(dbc.CardBody([
+                    html.H6(dim_nombre, className="mb-2"),
+                    html.Ul(items, style={"listStyle": "none", "paddingLeft": "0"}),
+                ]), className="shadow-sm h-100",
+                    style={"borderRadius": "10px"}), md=3))
+
+            return html.Div([
+                dbc.Row(kpis, className="mb-3 g-3"),
+                dbc.Row([
+                    dbc.Col(
+                        dcc.Graph(figure=fig_radar,
+                                  config={'displayModeBar': False})
+                        if fig_radar else html.Div(""),
+                        md=6),
+                    dbc.Col([
+                        html.H5("Categorías", className="mb-2"),
+                        html.P([
+                            html.Span("Urbanismo social: ",
+                                      style={"fontSize": "0.85rem"}),
+                            html.B(str(row.get('cat_urbanismo_social', '—'))),
+                        ]),
+                        html.P([
+                            html.Span("Calidad vivienda: ",
+                                      style={"fontSize": "0.85rem"}),
+                            html.B(str(row.get('cat_calidad_vivienda', '—'))),
+                        ]),
+                        html.P([
+                            html.Span("Concentración equip.: ",
+                                      style={"fontSize": "0.85rem"}),
+                            html.B(str(row.get('concentracion_equipamiento', '—'))),
+                        ]),
+                        html.P([
+                            html.Span("Zona sísmica: ",
+                                      style={"fontSize": "0.85rem"}),
+                            html.B(str(row.get('taxonomia_sismica', '—'))),
+                        ]),
+                    ], md=6),
+                ], className="mb-3"),
+                html.H5("Indicadores por dimensión", className="mb-2"),
+                dbc.Row(dimension_cards, className="g-3"),
+            ])
+
+    # ── CORRELACIONES ─────────────────────────────────────────────
+    def _register_correlaciones_callback(self, app: Dash) -> None:
+        @app.callback(
+            [Output("corr-scatter", "children"),
+             Output("corr-matriz", "children")],
+            [Input("corr-eje-x", "value"),
+             Input("corr-eje-y", "value"),
+             Input("corr-color", "value")]
+        )
+        def actualizar_correlaciones(eje_x, eje_y, color_by):
+            if not hasattr(self, '_corr_data') or not eje_x or not eje_y:
+                msg = html.Div("Selecciona métricas.", className="text-muted")
+                return msg, msg
+
+            df = self._corr_data.copy()
+            if eje_x not in df.columns or eje_y not in df.columns:
+                msg = html.Div("Métrica no disponible.", className="text-danger")
+                return msg, msg
+
+            # Scatter plot con trendline
+            color_col = color_by if color_by != 'ninguno' and color_by in df.columns else None
+            fig_scatter = px.scatter(
+                df, x=eje_x, y=eje_y,
+                color=color_col,
+                hover_name='colonia',
+                trendline='ols',
+                color_continuous_scale='Viridis' if color_col else None,
+                opacity=0.7,
+            )
+
+            # Calcular R²
+            valid = df[[eje_x, eje_y]].dropna()
+            if len(valid) > 2:
+                corr = valid[eje_x].corr(valid[eje_y])
+                r2_text = f"R = {corr:.3f} (n={len(valid)})"
+            else:
+                r2_text = "Datos insuficientes"
+
+            x_label = eje_x.replace('_', ' ').title()
+            y_label = eje_y.replace('_', ' ').title()
+            fig_scatter.update_layout(
+                template='plotly_white',
+                title=dict(text=f'{x_label} vs {y_label}<br>'
+                                f'<span style="font-size:12px">{r2_text}</span>',
+                           x=0.5, xanchor='center'),
+                height=500,
+                margin=dict(r=10, t=70, l=10, b=10),
+                xaxis_title=x_label,
+                yaxis_title=y_label,
+            )
+
+            scatter = dcc.Graph(figure=fig_scatter,
+                                config={'displayModeBar': False})
+
+            # Matriz de correlación (top métricas numéricas)
+            metric_cols = [col for _, col in self._METRICAS_CORRELACIONES
+                          if col in df.columns and df[col].dtype.kind in ('i', 'f')]
+            metric_labels = [label for label, col in self._METRICAS_CORRELACIONES
+                            if col in metric_cols]
+            corr_matrix = df[metric_cols].corr()
+
+            fig_matrix = go.Figure(data=go.Heatmap(
+                z=corr_matrix.values,
+                x=metric_labels,
+                y=metric_labels,
+                colorscale='RdBu_r',
+                zmin=-1, zmax=1,
+                text=np.round(corr_matrix.values, 2),
+                texttemplate='%{text}',
+                textfont={"size": 8},
+            ))
+            fig_matrix.update_layout(
+                template='plotly_white',
+                title=dict(text='Matriz de correlación', x=0.5, xanchor='center'),
+                height=500,
+                margin=dict(r=10, t=40, l=10, b=10),
+                xaxis=dict(tickangle=-45, tickfont=dict(size=8)),
+                yaxis=dict(tickfont=dict(size=8)),
+            )
+
+            matriz = dcc.Graph(figure=fig_matrix,
+                               config={'displayModeBar': False})
+
+            return scatter, matriz
+
+    # ── MAPA DE RIESGO ────────────────────────────────────────────
+    def _register_riesgo_callback(self, app: Dash) -> None:
+        @app.callback(
+            [Output("mapa-riesgo", "children"),
+             Output("tabla-riesgo", "children")],
+            [Input("btn-calcular-riesgo", "n_clicks")],
+            [State("riesgo-componentes", "value")]
+        )
+        def actualizar_riesgo(n_clicks, componentes):
+            if not hasattr(self, '_riesgo_indicadores') or not componentes:
+                msg = html.Div("Selecciona componentes y presiona Calcular.",
+                               className="text-muted")
+                return msg, msg
+
+            import geopandas as _gpd
+            gdf = self._riesgo_indicadores.copy()
+            infra = self._riesgo_infra
+
+            # Calcular score de riesgo por colonia
+            gdf['score_riesgo'] = 0.0
+            n_componentes = len(componentes)
+
+            if 'zona_inundacion' in componentes:
+                # Contar inundaciones por spatial join con colonias
+                inund = infra[infra['subcategoria'] == 'zona_inundacion']
+                if not inund.empty and 'geometry' in gdf.columns:
+                    try:
+                        conteo = _gpd.sjoin(
+                            inund.to_crs(gdf.crs),
+                            gdf[['colonia', 'geometry']],
+                            how='inner', predicate='intersects'
+                        ).groupby('colonia').size().rename('n_inundaciones')
+                        gdf = gdf.merge(conteo, on='colonia', how='left')
+                        gdf['n_inundaciones'] = gdf['n_inundaciones'].fillna(0)
+                        vmax = gdf['n_inundaciones'].max()
+                        if vmax > 0:
+                            gdf['score_riesgo'] += (gdf['n_inundaciones'] / vmax) * (100 / n_componentes)
+                    except Exception:
+                        gdf['n_inundaciones'] = 0
+
+            if 'accidente_peaton' in componentes:
+                acc = infra[infra['subcategoria'] == 'accidente_peaton']
+                if not acc.empty and 'geometry' in gdf.columns:
+                    try:
+                        conteo = _gpd.sjoin(
+                            acc.to_crs(gdf.crs),
+                            gdf[['colonia', 'geometry']],
+                            how='inner', predicate='within'
+                        ).groupby('colonia').size().rename('n_accidentes')
+                        gdf = gdf.merge(conteo, on='colonia', how='left')
+                        gdf['n_accidentes'] = gdf['n_accidentes'].fillna(0)
+                        vmax = gdf['n_accidentes'].max()
+                        if vmax > 0:
+                            gdf['score_riesgo'] += (gdf['n_accidentes'] / vmax) * (100 / n_componentes)
+                    except Exception:
+                        gdf['n_accidentes'] = 0
+
+            if 'convergencia_riesgos' in componentes:
+                conv = infra[infra['subcategoria'] == 'convergencia_riesgos']
+                if not conv.empty and 'geometry' in gdf.columns:
+                    try:
+                        conteo = _gpd.sjoin(
+                            conv.to_crs(gdf.crs),
+                            gdf[['colonia', 'geometry']],
+                            how='inner', predicate='intersects'
+                        ).groupby('colonia').size().rename('n_convergencia')
+                        gdf = gdf.merge(conteo, on='colonia', how='left')
+                        gdf['n_convergencia'] = gdf['n_convergencia'].fillna(0)
+                        vmax = gdf['n_convergencia'].max()
+                        if vmax > 0:
+                            gdf['score_riesgo'] += (gdf['n_convergencia'] / vmax) * (100 / n_componentes)
+                    except Exception:
+                        gdf['n_convergencia'] = 0
+
+            if 'vulnerabilidad' in componentes:
+                # Usar el score de vulnerabilidad ya calculado
+                try:
+                    gdf_vuln, _ = self._calcular_indice_vulnerabilidad(gdf)
+                    gdf['score_riesgo'] += gdf_vuln['score_vulnerabilidad'] * (1 / n_componentes)
+                except Exception:
+                    pass
+
+            gdf['score_riesgo'] = gdf['score_riesgo'].round(1)
+            gdf['ranking_riesgo'] = gdf['score_riesgo'].rank(
+                ascending=False, method='min').astype(int)
+
+            # Mapa
+            fig = px.choropleth_mapbox(
+                data_frame=gdf,
+                geojson=gdf.__geo_interface__,
+                locations=gdf.index,
+                color='score_riesgo',
+                mapbox_style='open-street-map',
+                zoom=12,
+                center={"lat": 19.332608, "lon": -99.143209},
+                color_continuous_scale='YlOrRd',
+                range_color=[0, gdf['score_riesgo'].quantile(0.95)],
+                opacity=0.8,
+                hover_name='colonia',
+            )
+            hover_parts = ['<b>%{hovertext}</b><br>',
+                           '<b>Score riesgo:</b> %{z:.1f}<br>']
+            fig.update_traces(
+                hovertemplate=''.join(hover_parts) + '<extra></extra>',
+                marker_line_color='white', marker_line_width=0.5)
+            fig.update_layout(
+                template='plotly_white',
+                title=dict(text='Riesgo Territorial — Coyoacán',
+                           x=0.5, y=0.95, xanchor='center', yanchor='top'),
+                margin=dict(r=0, t=60, l=0, b=0),
+                height=550,
+                coloraxis_colorbar=dict(title="Riesgo", len=0.7, thickness=15),
+            )
+            mapa = dcc.Graph(figure=fig, config={'displayModeBar': False})
+
+            # Tabla ranking top 20
+            top20 = gdf.nlargest(20, 'score_riesgo')
+            header = [html.Th("#"), html.Th("Colonia"), html.Th("Score")]
+            # Agregar columnas de conteo si existen
+            count_cols = []
+            for col_name, col_label in [('n_inundaciones', 'Inund.'),
+                                         ('n_accidentes', 'Accid.'),
+                                         ('n_convergencia', 'Conv.')]:
+                if col_name in gdf.columns:
+                    header.append(html.Th(col_label))
+                    count_cols.append(col_name)
+
+            rows = []
+            for _, r in top20.iterrows():
+                cells = [
+                    html.Td(r['ranking_riesgo']),
+                    html.Td(html.B(r['colonia'])),
+                    html.Td(f"{r['score_riesgo']:.1f}"),
+                ]
+                for cc in count_cols:
+                    cells.append(html.Td(int(r.get(cc, 0))))
+                rows.append(html.Tr(cells))
+
+            tabla = html.Div([
+                html.H5("Colonias con mayor riesgo (Top 20)"),
+                dbc.Table(
+                    [html.Thead(html.Tr(header)), html.Tbody(rows)],
+                    bordered=True, striped=True, hover=True, size="sm",
+                    className="mt-2",
+                ),
+            ])
+
+            return mapa, tabla

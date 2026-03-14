@@ -50,6 +50,9 @@ class LayoutBuilder:
                     dbc.NavLink("Vulnerabilidad", href="/dashboard/vulnerabilidad", active="exact"),
                     dbc.NavLink("Capas", href="/dashboard/capas", active="exact"),
                     dbc.NavLink("Comparador", href="/dashboard/comparador", active="exact"),
+                    dbc.NavLink("Perfil Colonia", href="/dashboard/perfil", active="exact"),
+                    dbc.NavLink("Correlaciones", href="/dashboard/correlaciones", active="exact"),
+                    dbc.NavLink("Mapa de Riesgo", href="/dashboard/riesgo", active="exact"),
                 ],
                 vertical=True,
                 pills=True,
@@ -370,5 +373,86 @@ class LayoutBuilder:
                 )
             ], style = {"width": "20%", 
                         "display": "inline-block"})
-        ], style = {"display": "flex", 
+        ], style = {"display": "flex",
                   "flexDirection": "row"})
+
+    def create_perfil_page(self, colonias: List[str]) -> html.Div:
+        """Página de ficha técnica de una colonia individual."""
+        return html.Div([
+            html.H3("Perfil de Colonia"),
+            html.P("Ficha técnica completa con todos los indicadores",
+                   className="text-muted mb-3"),
+            dcc.Dropdown(
+                id="perfil-colonia-select",
+                options=[{'label': c, 'value': c} for c in colonias],
+                value=colonias[0] if colonias else None,
+                placeholder="Selecciona una colonia...",
+                style={"maxWidth": "400px", "marginBottom": "20px"},
+            ),
+            html.Div(id="perfil-contenido"),
+        ])
+
+    def create_correlaciones_page(self, metricas: List[Tuple[str, str]]) -> html.Div:
+        """Página de análisis de correlaciones entre métricas."""
+        opciones = [{'label': label, 'value': col} for label, col in metricas]
+        return html.Div([
+            html.H3("Análisis de Correlaciones"),
+            html.P("Explora relaciones entre indicadores territoriales",
+                   className="text-muted mb-3"),
+            dbc.Row([
+                dbc.Col([
+                    html.Label("Eje X:", style={"fontSize": "0.85rem"}),
+                    dcc.Dropdown(id="corr-eje-x", options=opciones,
+                                 value=opciones[0]['value'] if opciones else None),
+                ], md=3),
+                dbc.Col([
+                    html.Label("Eje Y:", style={"fontSize": "0.85rem"}),
+                    dcc.Dropdown(id="corr-eje-y", options=opciones,
+                                 value=opciones[1]['value'] if len(opciones) > 1 else None),
+                ], md=3),
+                dbc.Col([
+                    html.Label("Color por:", style={"fontSize": "0.85rem"}),
+                    dcc.Dropdown(id="corr-color", options=[{'label': 'Ninguno', 'value': 'ninguno'}] + opciones,
+                                 value='ninguno'),
+                ], md=3),
+            ], className="mb-3"),
+            dbc.Row([
+                dbc.Col(html.Div(id="corr-scatter"), md=8),
+                dbc.Col(html.Div(id="corr-matriz"), md=4),
+            ]),
+        ])
+
+    def create_riesgo_page(self) -> html.Div:
+        """Página de mapa de calor de riesgo multiamenaza."""
+        return html.Div([
+            html.H3("Mapa de Riesgo Territorial"),
+            html.P("Concentración de amenazas por colonia: inundaciones, accidentes, convergencia de riesgos y vulnerabilidad",
+                   className="text-muted mb-3"),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card(dbc.CardBody([
+                        html.H6("Componentes de riesgo", className="mb-2"),
+                        dcc.Checklist(
+                            id="riesgo-componentes",
+                            options=[
+                                {'label': ' Zonas de inundación', 'value': 'zona_inundacion'},
+                                {'label': ' Accidentes peatonales', 'value': 'accidente_peaton'},
+                                {'label': ' Convergencia de riesgos', 'value': 'convergencia_riesgos'},
+                                {'label': ' Vulnerabilidad territorial', 'value': 'vulnerabilidad'},
+                            ],
+                            value=['zona_inundacion', 'accidente_peaton',
+                                   'convergencia_riesgos', 'vulnerabilidad'],
+                            labelStyle={'display': 'block', 'marginBottom': '6px',
+                                        'fontSize': '0.85rem'},
+                        ),
+                        html.Hr(className="my-2"),
+                        dbc.Button("Calcular", id="btn-calcular-riesgo",
+                                   color="danger", size="sm", className="w-100"),
+                    ]), className="shadow-sm", style={"borderRadius": "10px"}),
+                ], md=3),
+                dbc.Col([
+                    html.Div(id="mapa-riesgo"),
+                    html.Div(id="tabla-riesgo", className="mt-3"),
+                ], md=9),
+            ]),
+        ])
