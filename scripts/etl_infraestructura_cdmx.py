@@ -195,6 +195,66 @@ def main():
         gdf['nombre'] = 'Tren Ligero'
         infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
 
+    # Trolebus estaciones
+    ruta_trol_est = buscar_shp(f"{BASE_DIR}/tren_ligero", "STE_Trolebus_Paradas.shp")
+    if ruta_trol_est:
+        gdf = cargar_y_filtrar(ruta_trol_est, gdf_coyoacan, "trolebus_paradas")
+        if gdf is not None and len(gdf) > 0:
+            gdf['categoria'] = 'transporte'
+            gdf['subcategoria'] = 'trolebus_parada'
+            for col in ['NOMBRE', 'nombre', 'Nombre']:
+                if col in gdf.columns:
+                    gdf['nombre'] = gdf[col]
+                    break
+            else:
+                gdf['nombre'] = 'Parada Trolebus'
+            infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
+
+    # Trolebus lineas
+    ruta_trol_lin = buscar_shp(f"{BASE_DIR}/tren_ligero", "STE_Trolebus_Lineas.shp")
+    if ruta_trol_lin:
+        gdf = cargar_y_filtrar(ruta_trol_lin, gdf_coyoacan, "trolebus_lineas")
+        if gdf is not None and len(gdf) > 0:
+            gdf['categoria'] = 'transporte'
+            gdf['subcategoria'] = 'trolebus_linea'
+            for col in ['RUTA', 'LINEA', 'NOMBRE']:
+                if col in gdf.columns:
+                    gdf['nombre'] = gdf[col]
+                    break
+            else:
+                gdf['nombre'] = 'Linea Trolebus'
+            infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
+
+    # Cablebus estaciones
+    ruta_cab_est = buscar_shp(f"{BASE_DIR}/tren_ligero", "STE_Cablebus_estaciones.shp")
+    if ruta_cab_est:
+        gdf = cargar_y_filtrar(ruta_cab_est, gdf_coyoacan, "cablebus_estaciones")
+        if gdf is not None and len(gdf) > 0:
+            gdf['categoria'] = 'transporte'
+            gdf['subcategoria'] = 'cablebus_estacion'
+            for col in ['NOMBRE', 'nombre', 'Nombre']:
+                if col in gdf.columns:
+                    gdf['nombre'] = gdf[col]
+                    break
+            else:
+                gdf['nombre'] = 'Estacion Cablebus'
+            infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
+
+    # Cablebus lineas
+    ruta_cab_lin = buscar_shp(f"{BASE_DIR}/tren_ligero", "STE_Cablebus_lineas.shp")
+    if ruta_cab_lin:
+        gdf = cargar_y_filtrar(ruta_cab_lin, gdf_coyoacan, "cablebus_lineas")
+        if gdf is not None and len(gdf) > 0:
+            gdf['categoria'] = 'transporte'
+            gdf['subcategoria'] = 'cablebus_linea'
+            for col in ['RUTA', 'LINEA', 'NOMBRE']:
+                if col in gdf.columns:
+                    gdf['nombre'] = gdf[col]
+                    break
+            else:
+                gdf['nombre'] = 'Linea Cablebus'
+            infra_frames.append(gdf[['nombre', 'categoria', 'subcategoria', 'geometry']].copy())
+
     # Ciclovias (total)
     for shp_name in ['Infraestructura ciclista total.shp', 'Ciclovia.shp']:
         ruta_ciclo = f"{BASE_DIR}/ciclovias/infraestructura_vial_ciclista/{shp_name}"

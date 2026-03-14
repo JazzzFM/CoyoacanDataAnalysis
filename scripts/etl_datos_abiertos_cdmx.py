@@ -419,6 +419,25 @@ def main():
             gdf_final = gdf_final.merge(inet_por_col, on='colonia', how='left')
             logger.info(f"  Internet asignado: {gdf_final['pct_viv_internet'].notna().sum()} colonias")
 
+    # Spatial join: concentracion de equipamiento (5 zonas citywide -> asignar a colonias)
+    ruta_equip = os.path.join(BASE_DIR, "concentracion_equipamiento/concentracion_equipa.shp")
+    if os.path.exists(ruta_equip):
+        logger.info("  Enriqueciendo con concentracion de equipamiento (spatial join)...")
+        gdf_equip = gpd.read_file(ruta_equip)
+        if gdf_equip.crs != gdf_final.crs:
+            gdf_equip = gdf_equip.to_crs(gdf_final.crs)
+        # Usar centroide de cada colonia para determinar zona
+        gdf_pts = gdf_final[['colonia', 'geometry']].copy()
+        gdf_pts['centroid_equip'] = gdf_pts.geometry.centroid
+        gdf_pts = gdf_pts.set_geometry('centroid_equip')
+        joined = gpd.sjoin(gdf_pts[['colonia', 'centroid_equip']],
+                           gdf_equip[['RANGO', 'geometry']],
+                           how='left', predicate='within')
+        joined = joined.drop_duplicates(subset=['colonia'], keep='first')
+        equip_map = joined.set_index('colonia')['RANGO']
+        gdf_final['concentracion_equipamiento'] = gdf_final['colonia'].map(equip_map)
+        logger.info(f"  Equipamiento asignado: {gdf_final['concentracion_equipamiento'].notna().sum()} colonias")
+
     # Limpiar columnas temporales de merges internos
     drop_cols = [c for c in gdf_final.columns if c.startswith('_drop_')]
     if drop_cols:

@@ -164,6 +164,14 @@ class CallbackRegister:
                      'value': 'valor_suelo_pesos'},
                     {'label': 'Espacio público por hab. (m²)',
                      'value': 'm2_espacio_pub_hab'},
+                    {'label': 'Temperatura nocturna (°C)',
+                     'value': 'temp_nocturna_media'},
+                    {'label': 'Viviendas con internet (%)',
+                     'value': 'pct_viv_internet'},
+                    {'label': 'Consumo agua promedio (m³)',
+                     'value': 'consumo_agua_prom_m3'},
+                    {'label': 'Tasa crecimiento 2010-2020',
+                     'value': 'tasa_crecimiento_2010_2020'},
                 ]
                 cats_infra = sorted(
                     self._capas_infra['subcategoria'].unique())
@@ -574,19 +582,30 @@ class CallbackRegister:
     # peso default (suma = 1.0), invertir (True = más alto → menos vulnerable)
     _COMPONENTES_VULNERABILIDAD = [
         {'label': 'Densidad vivienda',       'variable': 'densidad_viv_ha',
-         'peso': 0.15, 'invertir': False},
+         'peso': 0.10, 'invertir': False},
         {'label': 'Viviendas desocupadas',   'variable': 'pct_viviendas_desocupadas',
-         'peso': 0.15, 'invertir': False},
+         'peso': 0.10, 'invertir': False},
         {'label': 'Área verde por hab.',     'variable': 'm2_area_verde_hab',
-         'peso': 0.15, 'invertir': True},
-        {'label': 'Espacio público por hab.','variable': 'm2_espacio_pub_hab',
          'peso': 0.10, 'invertir': True},
+        {'label': 'Espacio público por hab.','variable': 'm2_espacio_pub_hab',
+         'peso': 0.08, 'invertir': True},
         {'label': 'Deterioro valor suelo',   'variable': 'deterioro_valor',
-         'peso': 0.15, 'invertir': False},
+         'peso': 0.10, 'invertir': False},
         {'label': 'Calidad vivienda',        'variable': 'indice_calidad_viv_superior',
-         'peso': 0.15, 'invertir': True},
+         'peso': 0.10, 'invertir': True},
         {'label': 'Servicios turismo',       'variable': 'num_servicios_turismo',
-         'peso': 0.15, 'invertir': True},
+         'peso': 0.07, 'invertir': True},
+        # --- Nuevos componentes (datos ya en BD) ---
+        {'label': 'Isla de calor',           'variable': 'temp_nocturna_media',
+         'peso': 0.09, 'invertir': False},
+        {'label': 'Brecha digital',          'variable': 'pct_viv_internet',
+         'peso': 0.08, 'invertir': True},
+        {'label': 'Presión hídrica',         'variable': 'consumo_agua_prom_m3',
+         'peso': 0.07, 'invertir': False},
+        {'label': 'Rezago espacio público',  'variable': 'rezago_espacio_publico',
+         'peso': 0.06, 'invertir': False},
+        {'label': 'Acceso educación',        'variable': 'num_escuelas_basicas',
+         'peso': 0.05, 'invertir': True},
     ]
 
     _QUINTIL_LABELS = [
@@ -657,11 +676,13 @@ class CallbackRegister:
         'densidad_viv_ha', 'm2_area_verde_hab', 'm2_espacio_pub_hab',
         'pct_viviendas_desocupadas', 'valor_suelo_pesos',
         'num_servicios_turismo', 'indice_calidad_viv_superior',
+        'temp_nocturna_media', 'pct_viv_internet', 'consumo_agua_prom_m3',
     ]
     _LABELS_RADAR = [
         'Densidad', 'Área verde', 'Espacio público',
         'Viv. desocupadas', 'Valor suelo',
         'Turismo', 'Calidad vivienda',
+        'Temp. nocturna', 'Internet', 'Consumo agua',
     ]
     _METRICAS_TABLA = [
         ('Población 2010', 'poblacion_2010'),
@@ -673,6 +694,11 @@ class CallbackRegister:
         ('Servicios turismo', 'num_servicios_turismo'),
         ('Calidad vivienda', 'cat_calidad_vivienda'),
         ('Urbanismo social', 'cat_urbanismo_social'),
+        ('Temp. nocturna (°C)', 'temp_nocturna_media'),
+        ('Viviendas con internet (%)', 'pct_viv_internet'),
+        ('Consumo agua (m³)', 'consumo_agua_prom_m3'),
+        ('Escuelas básicas', 'num_escuelas_basicas'),
+        ('Tasa crecimiento 10-20', 'tasa_crecimiento_2010_2020'),
     ]
 
     def _register_vulnerabilidad_callback(self, app: Dash) -> None:
