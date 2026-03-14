@@ -32,13 +32,15 @@ class LayoutBuilder:
         }
 
         sidebar = html.Div([
-            html.H2("Coyoacán", className = "display-4"),
+            html.H2("Coyoacán", className="display-4"),
             html.Hr(),
-            html.P("Análisis de Datos Georeferenciados", className="lead"),
-            dbc.Nav(
-                [
-                    dbc.NavLink("Inicio", href="/dashboard/",
-                    active="exact"),
+            html.P("Análisis Territorial Georreferenciado", className="lead"),
+            dbc.Nav([
+                    dbc.NavLink("Inicio", href="/dashboard/", active="exact"),
+
+                    html.Small("DATOS", className="text-uppercase mt-2 mb-1 px-3",
+                               style={"fontSize": "0.65rem", "letterSpacing": "1.5px",
+                                      "color": "rgba(255,255,255,0.4)", "display": "block"}),
                     dbc.NavLink("Demográficos", href="/dashboard/demograficos", active="exact"),
                     dbc.NavLink("Edafológicos", href="/dashboard/edafologicos", active="exact"),
                     dbc.NavLink("Electorales", href="/dashboard/electorales", active="exact"),
@@ -46,19 +48,26 @@ class LayoutBuilder:
                     dbc.NavLink("Ambientales", href="/dashboard/ambientales", active="exact"),
                     dbc.NavLink("Infraestructura", href="/dashboard/infraestructura", active="exact"),
                     dbc.NavLink("Recursos Naturales", href="/dashboard/recursos-naturales", active="exact"),
-                    html.Hr(),
+
+                    html.Small("ANÁLISIS", className="text-uppercase mt-2 mb-1 px-3",
+                               style={"fontSize": "0.65rem", "letterSpacing": "1.5px",
+                                      "color": "rgba(255,255,255,0.4)", "display": "block"}),
                     dbc.NavLink("Vulnerabilidad", href="/dashboard/vulnerabilidad", active="exact"),
-                    dbc.NavLink("Capas", href="/dashboard/capas", active="exact"),
-                    dbc.NavLink("Comparador", href="/dashboard/comparador", active="exact"),
-                    dbc.NavLink("Perfil Colonia", href="/dashboard/perfil", active="exact"),
-                    dbc.NavLink("Correlaciones", href="/dashboard/correlaciones", active="exact"),
-                    dbc.NavLink("Mapa de Riesgo", href="/dashboard/riesgo", active="exact"),
                     dbc.NavLink("Accesibilidad", href="/dashboard/accesibilidad", active="exact"),
+                    dbc.NavLink("Mapa de Riesgo", href="/dashboard/riesgo", active="exact"),
+                    dbc.NavLink("Correlaciones", href="/dashboard/correlaciones", active="exact"),
+
+                    html.Small("HERRAMIENTAS", className="text-uppercase mt-2 mb-1 px-3",
+                               style={"fontSize": "0.65rem", "letterSpacing": "1.5px",
+                                      "color": "rgba(255,255,255,0.4)", "display": "block"}),
+                    dbc.NavLink("Perfil Colonia", href="/dashboard/perfil", active="exact"),
+                    dbc.NavLink("Comparador", href="/dashboard/comparador", active="exact"),
+                    dbc.NavLink("Capas", href="/dashboard/capas", active="exact"),
                 ],
                 vertical=True,
                 pills=True,
             ),
-        ], style = sidebar_style)
+        ], style=sidebar_style)
 
         content = html.Div(id="page-content", style=content_style)
 
@@ -67,6 +76,14 @@ class LayoutBuilder:
             sidebar,
             content
         ])
+
+    @staticmethod
+    def create_insight_panel(titulo: str, puntos: List[str]) -> html.Div:
+        """Crea un panel de interpretación con estilo destacado."""
+        return html.Div([
+            html.H6(f"Interpretacion — {titulo}"),
+            html.Ul([html.Li(p) for p in puntos]),
+        ], className="insight-panel")
 
     def _create_kpi_card(self, valor: str, titulo: str, subtitulo: str = "") -> dbc.Card:
         """
@@ -141,6 +158,23 @@ class LayoutBuilder:
         if extra_charts:
             children.append(dbc.Row(extra_charts, className="mb-4"))
         children.append(hallazgos_card)
+
+        children.append(self.create_insight_panel(
+            "Coyoacán en contexto", [
+                "Coyoacán es la 5ta alcaldía más poblada de la CDMX con ~608 mil habitantes. "
+                "Su territorio combina zonas de alta densidad al norte (colindantes con Benito Juárez) "
+                "con áreas de baja densidad al sur (Pedregal, zonas ecológicas).",
+                "La alcaldía presenta una segregación socio-espacial marcada: las colonias cercanas "
+                "a Insurgentes y Coyoacán Centro concentran mayor valor de suelo, mejor calidad de "
+                "vivienda y más servicios, mientras que las colonias periféricas del sur-oriente "
+                "muestran mayor vulnerabilidad y menos acceso a equipamiento.",
+                "El promedio de área verde per cápita está por debajo de la recomendación de la OMS "
+                "(9 m²/hab), lo que se agrava en las colonias más densas donde la correlación "
+                "densidad-verde es fuertemente negativa.",
+                "Este dashboard integra 63 indicadores en 9 tablas PostGIS, 25 mil puntos de servicio "
+                "DENUE y 1,200 puntos de infraestructura para ofrecer una radiografía territorial "
+                "completa de la alcaldía.",
+            ]))
 
         return html.Div(children)
 
@@ -293,6 +327,19 @@ class LayoutBuilder:
                        color="primary", size="sm", className="w-100"),
         ]), className="shadow-sm", style={"borderRadius": "10px"})
 
+        insight = self.create_insight_panel(
+            "Vulnerabilidad Territorial", [
+                "El índice combina 12 dimensiones normalizadas min-max: las colonias "
+                "con mayor score concentran simultáneamente alta densidad, pocas áreas verdes, "
+                "deterioro de vivienda y baja conectividad digital.",
+                "Las colonias del sur-oriente de Coyoacán tienden a puntuar más alto "
+                "por su combinación de isla de calor, menor espacio público y rezago "
+                "en infraestructura peatonal.",
+                "Los pesos son ajustables — un funcionario de salud priorizará brecha digital "
+                "y acceso a educación, mientras que protección civil enfatizará presión hídrica "
+                "e isla de calor.",
+            ])
+
         return html.Div([
             html.H3("Índice de Vulnerabilidad Territorial"),
             html.P("Score compuesto 0-100 por colonia (12 componentes) — quintiles de vulnerabilidad",
@@ -306,6 +353,7 @@ class LayoutBuilder:
             ]),
             html.Hr(),
             html.Div(id="tabla-ranking-vulnerabilidad"),
+            insight,
         ])
 
     def create_infraestructura_page(self, categorias: List[str]) -> html.Div:
@@ -392,6 +440,14 @@ class LayoutBuilder:
             html.H3("Perfil de Colonia"),
             html.P("Ficha técnica completa con todos los indicadores",
                    className="text-muted mb-3"),
+            self.create_insight_panel(
+                "Cómo leer el perfil", [
+                    "Los KPIs muestran el valor absoluto y su posición en el ranking de 153 colonias. "
+                    "El radar normaliza todos los indicadores a 0-100 para comparación visual.",
+                    "Los semáforos clasifican por terciles: verde (tercio inferior), amarillo (medio), "
+                    "rojo (tercio superior). Para métricas donde más es peor (ej. viviendas desocupadas), "
+                    "rojo indica alerta.",
+                ]),
             dcc.Dropdown(
                 id="perfil-colonia-select",
                 options=[{'label': c, 'value': c} for c in colonias],
@@ -409,6 +465,17 @@ class LayoutBuilder:
             html.H3("Análisis de Correlaciones"),
             html.P("Explora relaciones entre indicadores territoriales",
                    className="text-muted mb-3"),
+            self.create_insight_panel(
+                "Correlaciones Territoriales", [
+                    "La densidad de vivienda tiene correlación inversa con el área verde per cápita: "
+                    "a medida que aumenta la densificación, el espacio verde disponible disminuye. "
+                    "Esta relación no es inevitable — refleja decisiones de planificación urbana.",
+                    "El valor del suelo correlaciona positivamente con acceso a internet y calidad "
+                    "de vivienda, evidenciando segregación socio-espacial dentro de la alcaldía.",
+                    "Correlaciones cercanas a 0 pueden ser igual de interesantes: la temperatura "
+                    "nocturna no correlaciona fuertemente con densidad, sugiriendo que la isla de "
+                    "calor depende más de la cobertura vegetal y materiales que de la densificación.",
+                ]),
             dbc.Row([
                 dbc.Col([
                     html.Label("Eje X:", style={"fontSize": "0.85rem"}),
@@ -438,6 +505,18 @@ class LayoutBuilder:
             html.H3("Mapa de Riesgo Territorial"),
             html.P("Concentración de amenazas por colonia: inundaciones, accidentes, convergencia de riesgos y vulnerabilidad",
                    className="text-muted mb-3"),
+            self.create_insight_panel(
+                "Riesgo Multi-amenaza", [
+                    "El score de riesgo se calcula por spatial join: se cuenta cuántos eventos de "
+                    "cada tipo (inundaciones, accidentes peatonales, zonas de convergencia) caen dentro "
+                    "de cada polígono de colonia, se normaliza, y se suma ponderadamente.",
+                    "Las colonias aledañas al Río Churubusco y la zona de Pedregal concentran "
+                    "inundaciones, mientras que los accidentes peatonales se agrupan en corredores "
+                    "viales de alta velocidad como División del Norte e Insurgentes.",
+                    "La componente de vulnerabilidad permite cruzar el riesgo físico con la "
+                    "capacidad adaptativa de la población — una inundación en una colonia vulnerable "
+                    "tiene impacto desproporcionado.",
+                ]),
             dbc.Row([
                 dbc.Col([
                     dbc.Card(dbc.CardBody([
@@ -475,6 +554,16 @@ class LayoutBuilder:
             html.H3("Accesibilidad a Servicios Urbanos"),
             html.P("Distancia al servicio más cercano por colonia — identifica desiertos urbanos",
                    className="text-muted mb-3"),
+            self.create_insight_panel(
+                "Accesibilidad Urbana", [
+                    "Se calcula la distancia euclidiana desde el centroide de cada colonia al punto DENUE "
+                    "más cercano de la categoría seleccionada. Una distancia >1,200m (~15 min caminando) "
+                    "indica un desierto urbano donde los residentes carecen de acceso peatonal al servicio.",
+                    "Salud y educación son servicios esenciales — un desierto de salud con alta densidad "
+                    "poblacional representa una urgencia de política pública. El conteo de servicios en "
+                    "radio de 800m complementa el análisis: una colonia puede estar cerca de un servicio "
+                    "pero tener poca diversidad de opciones.",
+                ]),
             dbc.Row([
                 dbc.Col([
                     dbc.Card(dbc.CardBody([

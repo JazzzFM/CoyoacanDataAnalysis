@@ -1,0 +1,191 @@
+/* === Coyoacán Dashboard — Custom Styles === */
+
+/* Paleta: verde oscuro Coyoacán + acentos cálidos */
+:root {
+    --coyoacan-dark: #1a3c34;
+    --coyoacan-green: #2d6a4f;
+    --coyoacan-light: #40916c;
+    --coyoacan-accent: #d4a373;
+    --coyoacan-bg: #f0f2f5;
+    --card-radius: 12px;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+body {
+    background-color: var(--coyoacan-bg);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* --- Sidebar --- */
+#page-content {
+    padding-top: 1.5rem !important;
+}
+
+/* Sidebar background & styling */
+body > div > div:first-child {
+    background: linear-gradient(180deg, var(--coyoacan-dark) 0%, var(--coyoacan-green) 100%) !important;
+    border-right: none !important;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+}
+
+body > div > div:first-child h2 {
+    color: #fff !important;
+    font-weight: 700;
+    font-size: 1.6rem !important;
+    letter-spacing: -0.5px;
+}
+
+body > div > div:first-child .lead {
+    color: rgba(255,255,255,0.65) !important;
+    font-size: 0.82rem !important;
+}
+
+body > div > div:first-child hr {
+    border-color: rgba(255,255,255,0.15) !important;
+}
+
+/* Nav links */
+.nav-pills .nav-link {
+    color: rgba(255,255,255,0.75) !important;
+    border-radius: 8px !important;
+    margin-bottom: 2px;
+    font-size: 0.88rem;
+    padding: 0.45rem 0.9rem;
+    transition: all 0.15s ease;
+}
+
+.nav-pills .nav-link:hover {
+    color: #fff !important;
+    background-color: rgba(255,255,255,0.1) !important;
+}
+
+.nav-pills .nav-link.active {
+    color: #fff !important;
+    background-color: var(--coyoacan-light) !important;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(45,106,79,0.3);
+}
+
+/* --- Cards & KPIs --- */
+.card {
+    border: none !important;
+    border-radius: var(--card-radius) !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md) !important;
+}
+
+/* KPI values */
+.card .text-primary {
+    color: var(--coyoacan-green) !important;
+}
+
+/* --- Headings --- */
+h3 {
+    color: var(--coyoacan-dark);
+    font-weight: 700;
+    letter-spacing: -0.3px;
+}
+
+h5, h6 {
+    color: #2d3436;
+    font-weight: 600;
+}
+
+/* --- Tables --- */
+.table thead th {
+    background-color: var(--coyoacan-dark);
+    color: #fff;
+    font-size: 0.82rem;
+    border: none;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(45,106,79,0.04);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(45,106,79,0.08);
+}
+
+.table td, .table th {
+    font-size: 0.85rem;
+    vertical-align: middle;
+}
+
+/* --- Badges --- */
+.badge {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+/* --- Dropdowns --- */
+.Select-control, .Select-menu-outer {
+    border-radius: 8px !important;
+}
+
+/* --- Interpretation panels --- */
+.insight-panel {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e8f5e9 100%);
+    border-left: 4px solid var(--coyoacan-green);
+    border-radius: 0 var(--card-radius) var(--card-radius) 0;
+    padding: 1rem 1.2rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.insight-panel h6 {
+    color: var(--coyoacan-green);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.insight-panel p, .insight-panel li {
+    font-size: 0.84rem;
+    color: #2d3436;
+    line-height: 1.5;
+}
+
+.insight-panel ul {
+    padding-left: 1.2rem;
+    margin-bottom: 0;
+}
+
+/* --- Sliders --- */
+.rc-slider-track {
+    background-color: var(--coyoacan-light) !important;
+}
+
+.rc-slider-handle {
+    border-color: var(--coyoacan-green) !important;
+}
+
+/* --- Scrollbar (webkit) --- */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(45,106,79,0.3);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(45,106,79,0.5);
+}
+
+/* --- Responsive tweaks --- */
+@media (max-width: 768px) {
+    #page-content {
+        margin-left: 0 !important;
+        padding: 1rem !important;
+    }
+}
