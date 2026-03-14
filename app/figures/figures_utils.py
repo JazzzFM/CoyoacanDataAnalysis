@@ -351,8 +351,8 @@ class FiguresGenerator:
         )
         fig.update_layout(
             template='plotly_white',
-            margin=dict(r=10, t=40, l=0, b=0),
-            height=225,
+            margin=dict(r=10, t=40, l=10, b=10),
+            height=250,
             showlegend=False,
             yaxis_title=None,
             xaxis_title=None,
@@ -385,7 +385,7 @@ class FiguresGenerator:
         fig.update_layout(
             template='plotly_white',
             margin=dict(r=10, t=40, l=10, b=10),
-            height=225,
+            height=250,
             showlegend=False,
         )
         return fig

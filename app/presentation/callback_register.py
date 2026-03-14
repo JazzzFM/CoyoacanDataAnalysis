@@ -451,8 +451,15 @@ class CallbackRegister:
              Input("url", "pathname")]
         )
         def actualizar_mapa(anio: Optional[int], gran: str, metrica: Optional[str], pathname: str):
-            if not metrica:
+            if not metrica or not pathname:
                 return html.Div("Seleccione una métrica para visualizar el mapa.")
+
+            # Solo actuar en páginas de rubros con mapa coroplético
+            paginas_validas = {"/dashboard/demograficos", "/dashboard/edafologicos",
+                               "/dashboard/electorales", "/dashboard/servicios",
+                               "/dashboard/ambientales"}
+            if pathname not in paginas_validas:
+                return html.Div()
 
             dataset_key = self._parse_dataset_key(pathname)
 
@@ -629,6 +636,9 @@ class CallbackRegister:
              Input("url", "pathname")]
         )
         def actualizar_mapa_categorico(cats_infra, cats_recursos, pathname):
+            if pathname not in ("/dashboard/infraestructura", "/dashboard/recursos-naturales"):
+                return html.Div()
+
             dataset_key = self._parse_dataset_key(pathname)
 
             if dataset_key == "infraestructura":
