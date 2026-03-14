@@ -53,6 +53,7 @@ class LayoutBuilder:
                     dbc.NavLink("Perfil Colonia", href="/dashboard/perfil", active="exact"),
                     dbc.NavLink("Correlaciones", href="/dashboard/correlaciones", active="exact"),
                     dbc.NavLink("Mapa de Riesgo", href="/dashboard/riesgo", active="exact"),
+                    dbc.NavLink("Accesibilidad", href="/dashboard/accesibilidad", active="exact"),
                 ],
                 vertical=True,
                 pills=True,
@@ -90,16 +91,21 @@ class LayoutBuilder:
         fig_barras: go.Figure,
         fig_dona: go.Figure,
         hallazgos: List[str],
+        extra_charts: List = None,
     ) -> html.Div:
         """
         Construye la página de resumen ejecutivo con KPIs, mapa overview,
         charts y hallazgos clave.
         """
-        kpi_cards = dbc.Row(
-            [dbc.Col(self._create_kpi_card(v, t, s), md=True)
-             for v, t, s in kpis],
-            className="mb-4 g-3",
-        )
+        # Dividir KPIs en filas de 5
+        kpi_rows = []
+        for i in range(0, len(kpis), 5):
+            batch = kpis[i:i+5]
+            kpi_rows.append(dbc.Row(
+                [dbc.Col(self._create_kpi_card(v, t, s), md=True)
+                 for v, t, s in batch],
+                className="mb-3 g-3",
+            ))
 
         charts_row = dbc.Row([
             dbc.Col(
@@ -124,15 +130,19 @@ class LayoutBuilder:
             style={"borderRadius": "10px"},
         )
 
-        return html.Div([
+        children = [
             html.H3("Coyoacán — Resumen Ejecutivo", className="mb-1"),
             html.P("Análisis territorial integral de la alcaldía",
                    className="text-muted mb-3"),
             html.Hr(),
-            kpi_cards,
+            *kpi_rows,
             charts_row,
-            hallazgos_card,
-        ])
+        ]
+        if extra_charts:
+            children.append(dbc.Row(extra_charts, className="mb-4"))
+        children.append(hallazgos_card)
+
+        return html.Div(children)
 
     def create_demograficos_page(self, anios: List[int]) -> html.Div:
         return html.Div([
@@ -453,6 +463,45 @@ class LayoutBuilder:
                 dbc.Col([
                     html.Div(id="mapa-riesgo"),
                     html.Div(id="tabla-riesgo", className="mt-3"),
+                ], md=9),
+            ]),
+        ])
+
+    def create_accesibilidad_page(self, categorias: List[str]) -> html.Div:
+        """Página de análisis de accesibilidad a servicios urbanos."""
+        opciones = [{'label': c.replace('_', ' ').title(), 'value': c}
+                    for c in categorias]
+        return html.Div([
+            html.H3("Accesibilidad a Servicios Urbanos"),
+            html.P("Distancia al servicio más cercano por colonia — identifica desiertos urbanos",
+                   className="text-muted mb-3"),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card(dbc.CardBody([
+                        html.H6("Categoría de servicio", className="mb-2"),
+                        dcc.RadioItems(
+                            id="accesibilidad-categoria",
+                            options=opciones,
+                            value=opciones[0]['value'] if opciones else None,
+                            labelStyle={'display': 'block', 'marginBottom': '6px',
+                                        'fontSize': '0.85rem'},
+                        ),
+                        html.Hr(className="my-2"),
+                        html.H6("Clasificación", className="mb-1"),
+                        html.Div([
+                            html.Div("< 400m (5 min)", style={"color": "#2ca02c", "fontSize": "0.8rem"}),
+                            html.Div("400-800m (10 min)", style={"color": "#ff7f0e", "fontSize": "0.8rem"}),
+                            html.Div("800-1200m (15 min)", style={"color": "#d62728", "fontSize": "0.8rem"}),
+                            html.Div("> 1200m (desierto)", style={"color": "#7f7f7f", "fontSize": "0.8rem", "fontWeight": "bold"}),
+                        ], className="mb-2"),
+                        html.Hr(className="my-2"),
+                        dbc.Button("Calcular", id="btn-calcular-accesibilidad",
+                                   color="primary", size="sm", className="w-100"),
+                    ]), className="shadow-sm", style={"borderRadius": "10px"}),
+                ], md=3),
+                dbc.Col([
+                    html.Div(id="mapa-accesibilidad"),
+                    html.Div(id="resumen-accesibilidad", className="mt-3"),
                 ], md=9),
             ]),
         ])

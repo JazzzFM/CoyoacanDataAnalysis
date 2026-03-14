@@ -66,6 +66,7 @@ class CallbackRegister:
         self._register_perfil_callback(app)
         self._register_correlaciones_callback(app)
         self._register_riesgo_callback(app)
+        self._register_accesibilidad_callback(app)
 
     def _register_page_callback(self, app: Dash) -> None:
         """
@@ -203,6 +204,15 @@ class CallbackRegister:
                     .initialize_dataset(self.table_controller.infraestructura)
                 return self.page_builder.create_riesgo_page()
 
+            elif pathname == "/dashboard/accesibilidad":
+                self._accesibilidad_colonias = self.data_service\
+                    .initialize_dataset(self.table_controller.ambientales)
+                self._accesibilidad_servicios = self.data_service\
+                    .initialize_dataset(self.table_controller.servicios)
+                cats = sorted(
+                    self._accesibilidad_servicios['categoria'].unique())
+                return self.page_builder.create_accesibilidad_page(cats)
+
             else:
                 return html.Div([
                     html.H1("404: No encontrado", className = "text-danger"),
@@ -220,19 +230,46 @@ class CallbackRegister:
                 self.table_controller.ambientales)
             edafologicos = self.data_service.initialize_dataset(
                 self.table_controller.edafologicos)
+            infra = self.data_service.initialize_dataset(
+                self.table_controller.infraestructura)
 
-            # --- KPIs ---
+            # --- KPIs fila 1: datos generales ---
             pob_total = indicadores['poblacion_2010'].sum()
             n_colonias = len(indicadores)
             n_agebs = self.poligonos_ageb['ID_AGEB'].nunique()
             n_manzanas = self.poligonos_manzana['ID_MANZANA'].nunique()
+            media_verde = indicadores['m2_area_verde_hab'].mean()
 
             kpis = [
                 (f"{pob_total:,.0f}", "Habitantes", "Censo 2010"),
                 (f"{n_colonias:,}", "Colonias", ""),
                 (f"{n_agebs:,}", "AGEBs", ""),
                 (f"{n_manzanas:,}", "Manzanas", ""),
-                ("7", "Rubros", "de análisis"),
+                (f"{media_verde:.1f}", "m² verde/hab", "promedio"),
+            ]
+
+            # --- KPIs fila 2: indicadores clave ---
+            media_internet = indicadores['pct_viv_internet'].mean()
+            media_temp = indicadores['temp_nocturna_media'].mean()
+            n_infra = len(infra)
+            media_desocupadas = indicadores['pct_viviendas_desocupadas'].mean()
+
+            # Calcular vulnerabilidad para el KPI
+            try:
+                gdf_vuln, _ = self._calcular_indice_vulnerabilidad(indicadores)
+                vuln_media = gdf_vuln['score_vulnerabilidad'].mean()
+                col_mas_vuln = gdf_vuln.loc[
+                    gdf_vuln['score_vulnerabilidad'].idxmax(), 'colonia']
+            except Exception:
+                vuln_media = 0
+                col_mas_vuln = "—"
+
+            kpis += [
+                (f"{media_internet:.0f}%", "Internet", "viv. con acceso"),
+                (f"{media_temp:.1f}°C", "Temp. nocturna", "media"),
+                (f"{n_infra:,}", "Puntos infra.", "15 categorías"),
+                (f"{media_desocupadas:.1f}%", "Viv. desocupadas", "promedio"),
+                (f"{vuln_media:.0f}/100", "Vulnerabilidad", "score medio"),
             ]
 
             # --- Figuras ---
@@ -256,26 +293,74 @@ class CallbackRegister:
                 titulo='Distribución de uso de suelo',
             )
 
-            # --- Hallazgos dinámicos ---
+            # --- Charts extra: mini barras de vulnerabilidad y área verde ---
+            extra_charts = []
+            try:
+                fig_vuln_barras = FiguresGenerator.generar_barras_horizontales(
+                    df=gdf_vuln,
+                    columna_nombre='colonia',
+                    columna_valor='score_vulnerabilidad',
+                    titulo='Top 10 colonias más vulnerables',
+                )
+                if fig_vuln_barras:
+                    fig_vuln_barras.update_layout(
+                        coloraxis_colorbar=dict(title="Score"),
+                        coloraxis=dict(colorscale='YlOrRd'))
+                    extra_charts.append(dbc.Col(
+                        dcc.Graph(figure=fig_vuln_barras,
+                                  config={'displayModeBar': False}),
+                        md=6))
+            except Exception:
+                pass
+
+            fig_verde_barras = FiguresGenerator.generar_barras_horizontales(
+                df=indicadores,
+                columna_nombre='colonia',
+                columna_valor='m2_area_verde_hab',
+                titulo='Top 10 colonias por área verde',
+            )
+            if fig_verde_barras:
+                extra_charts.append(dbc.Col(
+                    dcc.Graph(figure=fig_verde_barras,
+                              config={'displayModeBar': False}),
+                    md=6))
+
+            # --- Hallazgos dinámicos enriquecidos ---
             col_max = indicadores.loc[indicadores['densidad_viv_ha'].idxmax()]
             media_dens = indicadores['densidad_viv_ha'].mean()
             uso_dom = edafologicos['USO_SUELO'].value_counts()
             pct_hab = (uso_dom.iloc[0] / len(edafologicos)) * 100
-            media_verde = indicadores['m2_area_verde_hab'].mean()
+
+            # Colonia con menos área verde
+            col_min_verde = indicadores.loc[
+                indicadores['m2_area_verde_hab'].idxmin()]
+
+            # Correlación densidad vs área verde
+            corr_dens_verde = indicadores[
+                ['densidad_viv_ha', 'm2_area_verde_hab']].corr().iloc[0, 1]
 
             hallazgos = [
                 f"{col_max['colonia']} es la colonia más densa: "
                 f"{col_max['densidad_viv_ha']:.0f} viv/ha "
                 f"({col_max['densidad_viv_ha'] / media_dens:.1f}x el promedio)",
-                f"Densidad promedio municipal: {media_dens:.1f} viv/ha",
-                f"El {pct_hab:.0f}% del suelo es {uso_dom.index[0].lower()}",
-                f"Promedio de área verde: {media_verde:.1f} m² por habitante",
-                f"Población total (2010): {pob_total:,.0f} habitantes "
-                f"en {n_colonias} colonias",
+                f"El {pct_hab:.0f}% del suelo es {uso_dom.index[0].lower()} "
+                f"— densidad promedio: {media_dens:.1f} viv/ha",
+                f"Área verde: {media_verde:.1f} m²/hab promedio "
+                f"— {col_min_verde['colonia']} tiene la menor "
+                f"({col_min_verde['m2_area_verde_hab']:.1f} m²/hab)",
+                f"Correlación densidad ↔ área verde: R={corr_dens_verde:.2f} "
+                f"({'inversa' if corr_dens_verde < 0 else 'directa'})",
+                f"Colonia más vulnerable: {col_mas_vuln} "
+                f"(score: {vuln_media:.0f}/100 promedio municipal)",
+                f"{media_internet:.0f}% de viviendas con internet "
+                f"— temp. nocturna media: {media_temp:.1f}°C",
+                f"{n_infra:,} puntos de infraestructura mapeados "
+                f"en 15 categorías",
             ]
 
             return self.page_builder.create_inicio_page(
-                kpis, fig_mapa, fig_barras, fig_dona, hallazgos)
+                kpis, fig_mapa, fig_barras, fig_dona, hallazgos,
+                extra_charts=extra_charts if extra_charts else None)
 
         except Exception as e:
             logger.error(f"Error construyendo resumen ejecutivo: {e}")
@@ -525,6 +610,9 @@ class CallbackRegister:
 
         elif pathname == "/dashboard/riesgo":
             return "riesgo"
+
+        elif pathname == "/dashboard/accesibilidad":
+            return "accesibilidad"
 
         return "demograficos"
 
@@ -1298,3 +1386,176 @@ class CallbackRegister:
             ])
 
             return mapa, tabla
+
+    # ── ACCESIBILIDAD ─────────────────────────────────────────────
+    _ACCESIBILIDAD_UMBRALES = [
+        (400, 'Alta (< 400m)', '#2ca02c'),
+        (800, 'Media (400-800m)', '#ff7f0e'),
+        (1200, 'Baja (800-1200m)', '#d62728'),
+        (float('inf'), 'Desierto (> 1200m)', '#7f7f7f'),
+    ]
+
+    def _register_accesibilidad_callback(self, app: Dash) -> None:
+        @app.callback(
+            [Output("mapa-accesibilidad", "children"),
+             Output("resumen-accesibilidad", "children")],
+            [Input("btn-calcular-accesibilidad", "n_clicks")],
+            [State("accesibilidad-categoria", "value")]
+        )
+        def actualizar_accesibilidad(n_clicks, categoria):
+            if (not hasattr(self, '_accesibilidad_colonias')
+                    or not categoria):
+                msg = html.Div("Selecciona una categoría y presiona Calcular.",
+                               className="text-muted")
+                return msg, msg
+
+            import geopandas as _gpd
+            from shapely.ops import nearest_points
+
+            gdf_col = self._accesibilidad_colonias.copy()
+            servicios = self._accesibilidad_servicios
+
+            # Filtrar servicios por categoría
+            serv_cat = servicios[servicios['categoria'] == categoria].copy()
+            if serv_cat.empty:
+                msg = html.Div(f"No hay servicios de tipo '{categoria}'.",
+                               className="text-warning")
+                return msg, msg
+
+            # Reproyectar a UTM 14N para distancias en metros
+            gdf_utm = gdf_col.to_crs("EPSG:32614")
+            serv_utm = serv_cat.to_crs("EPSG:32614")
+
+            # Centroide de cada colonia
+            centroides = gdf_utm.geometry.centroid
+
+            # Union de todos los puntos de servicio para nearest lookup
+            from shapely.ops import unary_union
+            serv_union = unary_union(serv_utm.geometry)
+
+            # Calcular distancia mínima por colonia
+            distancias = []
+            for centroid in centroides:
+                nearest = nearest_points(centroid, serv_union)[1]
+                dist = centroid.distance(nearest)
+                distancias.append(round(dist, 0))
+
+            gdf_col['distancia_servicio_m'] = distancias
+
+            # Contar servicios dentro de 800m por colonia
+            conteos = []
+            for centroid in centroides:
+                buffer = centroid.buffer(800)
+                n = serv_utm[serv_utm.geometry.within(buffer)].shape[0]
+                conteos.append(n)
+            gdf_col['servicios_800m'] = conteos
+
+            # Clasificar accesibilidad
+            def clasificar(dist):
+                for umbral, label, _ in self._ACCESIBILIDAD_UMBRALES:
+                    if dist <= umbral:
+                        return label
+                return 'Desierto (> 1200m)'
+
+            gdf_col['accesibilidad'] = gdf_col['distancia_servicio_m'].apply(
+                clasificar)
+
+            # Mapa coroplético por distancia
+            fig = px.choropleth_mapbox(
+                data_frame=gdf_col,
+                geojson=gdf_col.__geo_interface__,
+                locations=gdf_col.index,
+                color='distancia_servicio_m',
+                mapbox_style='open-street-map',
+                zoom=12,
+                center={"lat": 19.332608, "lon": -99.143209},
+                color_continuous_scale='RdYlGn_r',
+                opacity=0.8,
+                hover_name='colonia',
+                custom_data=['accesibilidad', 'servicios_800m'],
+            )
+            cat_label = categoria.replace('_', ' ').title()
+            fig.update_traces(
+                hovertemplate=(
+                    '<b>%{hovertext}</b><br>'
+                    f'Distancia a {cat_label}: %{{z:,.0f}}m<br>'
+                    'Accesibilidad: %{customdata[0]}<br>'
+                    f'{cat_label} en 800m: %{{customdata[1]}}'
+                    '<extra></extra>'
+                ),
+                marker_line_color='white', marker_line_width=0.5,
+            )
+            fig.update_layout(
+                template='plotly_white',
+                title=dict(
+                    text=f'Accesibilidad a {cat_label} — Coyoacán',
+                    x=0.5, y=0.95, xanchor='center', yanchor='top'),
+                margin=dict(r=0, t=60, l=0, b=0),
+                height=550,
+                coloraxis_colorbar=dict(
+                    title="Distancia (m)", len=0.7, thickness=15),
+            )
+
+            mapa = dcc.Graph(figure=fig, config={'displayModeBar': False})
+
+            # Resumen: conteo por clasificación + tabla desiertos
+            conteo_acc = gdf_col['accesibilidad'].value_counts()
+            resumen_items = []
+            for _, label, color in self._ACCESIBILIDAD_UMBRALES:
+                n = conteo_acc.get(label, 0)
+                pct = n / len(gdf_col) * 100
+                resumen_items.append(html.Div([
+                    html.Span(f"{label}: ", style={
+                        "color": color, "fontWeight": "bold",
+                        "fontSize": "0.9rem"}),
+                    html.Span(f"{n} colonias ({pct:.0f}%)",
+                              style={"fontSize": "0.9rem"}),
+                ]))
+
+            # Tabla de desiertos urbanos
+            desiertos = gdf_col[
+                gdf_col['distancia_servicio_m'] > 1200
+            ].sort_values('distancia_servicio_m', ascending=False)
+
+            if not desiertos.empty:
+                rows_desert = []
+                for _, r in desiertos.head(15).iterrows():
+                    rows_desert.append(html.Tr([
+                        html.Td(html.B(r['colonia'])),
+                        html.Td(f"{r['distancia_servicio_m']:,.0f}m"),
+                        html.Td(r.get('servicios_800m', 0)),
+                    ]))
+                tabla_desiertos = html.Div([
+                    html.H6(f"Desiertos urbanos de {cat_label} "
+                            f"({len(desiertos)} colonias)", className="mt-3"),
+                    dbc.Table([
+                        html.Thead(html.Tr([
+                            html.Th("Colonia"), html.Th("Distancia"),
+                            html.Th(f"{cat_label} en 800m")])),
+                        html.Tbody(rows_desert),
+                    ], bordered=True, striped=True, hover=True, size="sm"),
+                ])
+            else:
+                tabla_desiertos = html.Div(
+                    html.P(f"No hay desiertos urbanos de {cat_label}.",
+                           className="text-success mt-3"))
+
+            # Stats generales
+            media_dist = gdf_col['distancia_servicio_m'].mean()
+            mediana_dist = gdf_col['distancia_servicio_m'].median()
+
+            resumen = html.Div([
+                dbc.Row([
+                    dbc.Col([
+                        html.H5(f"Accesibilidad a {cat_label}"),
+                        *resumen_items,
+                        html.P(f"Distancia media: {media_dist:,.0f}m | "
+                               f"Mediana: {mediana_dist:,.0f}m",
+                               className="text-muted mt-2",
+                               style={"fontSize": "0.85rem"}),
+                    ], md=5),
+                    dbc.Col(tabla_desiertos, md=7),
+                ]),
+            ])
+
+            return mapa, resumen
