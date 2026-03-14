@@ -49,6 +49,8 @@ class CallbackRegister:
         self.poligonos_ageb = self.data_service\
             .initialize_dataset(self.table_controller.poligonos_ageb)
 
+        self.data = None  # Dataset activo (se inicializa al navegar a un rubro)
+
         self.poligonos_colonia = self.data_service\
             .initialize_dataset(self.table_controller.poligonos_colonia)
         
@@ -377,8 +379,12 @@ class CallbackRegister:
         if metrica not in gdf.columns or gdf[metrica].isna().all():
             return gdf
 
+        # Solo enriquecer métricas numéricas
+        if gdf[metrica].dtype.kind not in ('i', 'f'):
+            return gdf
+
         gdf = gdf.copy()
-        serie = gdf[metrica].fillna(0)
+        serie = pd.to_numeric(gdf[metrica], errors='coerce').fillna(0)
         media = serie.mean()
         total = len(gdf)
 
@@ -418,6 +424,13 @@ class CallbackRegister:
              Input("url", "pathname")]
         )
         def actualizar_opciones_metrica(anio: Optional[int], gran: str, pathname: str):
+            # Solo actuar en páginas de rubros con dropdown de métricas
+            paginas_validas = {"/dashboard/demograficos", "/dashboard/edafologicos",
+                               "/dashboard/electorales", "/dashboard/servicios",
+                               "/dashboard/ambientales"}
+            if pathname not in paginas_validas:
+                return []
+
             dataset_key = self._parse_dataset_key(pathname)
             gdf = self.data
 
@@ -564,14 +577,21 @@ class CallbackRegister:
                 nombre_hover = filters.nombre_zona_col,
             )
 
-            figura = FiguresGenerator\
-                    .generar_mapa_coropletico(gdf_filtrado, map_config)
-            
+            try:
+                figura = FiguresGenerator\
+                        .generar_mapa_coropletico(gdf_filtrado, map_config)
+            except Exception as e:
+                logger.warning(f"Error generando mapa para {metrica}: {e}")
+                return html.Div(
+                    f"No se puede graficar '{metrica}' — "
+                    "posiblemente contiene datos no numéricos.",
+                    className="text-warning p-3")
+
             if figura is None:
                 return html.Div("Mapa no disponible (datos vacíos).")
 
-            return dcc.Graph(figure = figura, 
-                             style = {'width': '100%', 
+            return dcc.Graph(figure = figura,
+                             style = {'width': '100%',
                                       'height': '800px'})
 
     def _parse_dataset_key(self, pathname: str) -> str:

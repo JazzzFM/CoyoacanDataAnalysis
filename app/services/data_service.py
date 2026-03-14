@@ -66,11 +66,16 @@ class DataService:
             return gpd.GeoDataFrame()
 
         metricas = [filters.metrica] if filters.metrica else []
-        columnas_fijas = metricas + filters.tooltip_cols
+        # Filtrar tooltip_cols a columnas que realmente existen en el dataset
+        tooltip_validos = [c for c in filters.tooltip_cols if c in gdf.columns]
+        columnas_fijas = metricas + tooltip_validos
+
+        # Helper: filtrar lista de columnas a solo las existentes en gdf
+        def _cols_existentes(cols):
+            return [c for c in cols if c in gdf.columns]
 
         if filters.granularidad == "ageb":
-            agrupa = columnas_fijas + metricas
-            agrupa += ["ID_AGEB", "GEOM_AGEB"]
+            agrupa = _cols_existentes(columnas_fijas + metricas + ["ID_AGEB", "GEOM_AGEB"])
             gdf = gdf.groupby(list(set(agrupa)))\
                 .first().reset_index()
             gdf = gdf[list(set(agrupa))]
@@ -78,20 +83,17 @@ class DataService:
 
         elif filters.granularidad == "colonia":
             if filters.type_data == "demograficos":
-                agrupa = columnas_fijas + metricas
-                agrupa += ["ID_COLONIA", "GEOM_COLONIA"]
+                agrupa = _cols_existentes(columnas_fijas + metricas + ["ID_COLONIA", "GEOM_COLONIA"])
                 gdf = gdf.groupby(list(set(agrupa)))\
                     .first().reset_index()
                 gdf = gdf[list(set(agrupa))]
                 gdf = gdf.set_geometry("GEOM_COLONIA")
 
             elif filters.type_data == "edafologicos":
-                gdf_ = gdf.groupby(['ID_COLONIA',
-                                    'USO_SUELO',
-                                    'SUPERFICIE',
-                                    'DNSDD_D',
-                                    'NIVELES',
-                                    'ALTURA'])\
+                group_cols = _cols_existentes(['ID_COLONIA', 'USO_SUELO',
+                                               'SUPERFICIE', 'DNSDD_D',
+                                               'NIVELES', 'ALTURA'])
+                gdf_ = gdf.groupby(group_cols)\
                         .size()\
                         .reset_index(name='counts')\
                         .sort_values('counts', ascending=False)\
@@ -105,9 +107,8 @@ class DataService:
                 gdf = gdf.set_geometry("GEOM_COLONIA")\
                     .dropna(subset=['USO_SUELO'])
         else:
-            agrupa = columnas_fijas + metricas
-            agrupa += ["ID_MANZANA", "GEOM_MANZANA"]
-            gdf = gdf[(list(set(agrupa)))]
+            agrupa = _cols_existentes(columnas_fijas + metricas + ["ID_MANZANA", "GEOM_MANZANA"])
+            gdf = gdf[list(set(agrupa))]
             gdf = gdf.set_geometry("GEOM_MANZANA")
 
         return gdf
