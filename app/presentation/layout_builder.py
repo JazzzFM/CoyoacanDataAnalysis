@@ -39,33 +39,33 @@ class LayoutBuilder:
             html.P("Análisis Territorial Georreferenciado",
                    style={"color": "rgba(255,255,255,0.65)", "fontSize": "0.82rem"}),
             dbc.Nav([
-                    dbc.NavLink("Inicio", href="/dashboard/", active="exact"),
+                    dbc.NavLink("Inicio", href="/dashboard/", active="exact", external_link=True),
 
                     html.Small("DATOS", className="text-uppercase mt-2 mb-1 px-3",
                                style={"fontSize": "0.65rem", "letterSpacing": "1.5px",
                                       "color": "rgba(255,255,255,0.4)", "display": "block"}),
-                    dbc.NavLink("Demográficos", href="/dashboard/demograficos", active="exact"),
-                    dbc.NavLink("Edafológicos", href="/dashboard/edafologicos", active="exact"),
-                    dbc.NavLink("Electorales", href="/dashboard/electorales", active="exact"),
-                    dbc.NavLink("Servicios", href="/dashboard/servicios", active="exact"),
-                    dbc.NavLink("Ambientales", href="/dashboard/ambientales", active="exact"),
-                    dbc.NavLink("Infraestructura", href="/dashboard/infraestructura", active="exact"),
-                    dbc.NavLink("Recursos Naturales", href="/dashboard/recursos-naturales", active="exact"),
+                    dbc.NavLink("Demográficos", href="/dashboard/demograficos", active="exact", external_link=True),
+                    dbc.NavLink("Edafológicos", href="/dashboard/edafologicos", active="exact", external_link=True),
+                    dbc.NavLink("Electorales", href="/dashboard/electorales", active="exact", external_link=True),
+                    dbc.NavLink("Servicios", href="/dashboard/servicios", active="exact", external_link=True),
+                    dbc.NavLink("Ambientales", href="/dashboard/ambientales", active="exact", external_link=True),
+                    dbc.NavLink("Infraestructura", href="/dashboard/infraestructura", active="exact", external_link=True),
+                    dbc.NavLink("Recursos Naturales", href="/dashboard/recursos-naturales", active="exact", external_link=True),
 
                     html.Small("ANÁLISIS", className="text-uppercase mt-2 mb-1 px-3",
                                style={"fontSize": "0.65rem", "letterSpacing": "1.5px",
                                       "color": "rgba(255,255,255,0.4)", "display": "block"}),
-                    dbc.NavLink("Vulnerabilidad", href="/dashboard/vulnerabilidad", active="exact"),
-                    dbc.NavLink("Accesibilidad", href="/dashboard/accesibilidad", active="exact"),
-                    dbc.NavLink("Mapa de Riesgo", href="/dashboard/riesgo", active="exact"),
-                    dbc.NavLink("Correlaciones", href="/dashboard/correlaciones", active="exact"),
+                    dbc.NavLink("Vulnerabilidad", href="/dashboard/vulnerabilidad", active="exact", external_link=True),
+                    dbc.NavLink("Accesibilidad", href="/dashboard/accesibilidad", active="exact", external_link=True),
+                    dbc.NavLink("Mapa de Riesgo", href="/dashboard/riesgo", active="exact", external_link=True),
+                    dbc.NavLink("Correlaciones", href="/dashboard/correlaciones", active="exact", external_link=True),
 
                     html.Small("HERRAMIENTAS", className="text-uppercase mt-2 mb-1 px-3",
                                style={"fontSize": "0.65rem", "letterSpacing": "1.5px",
                                       "color": "rgba(255,255,255,0.4)", "display": "block"}),
-                    dbc.NavLink("Perfil Colonia", href="/dashboard/perfil", active="exact"),
-                    dbc.NavLink("Comparador", href="/dashboard/comparador", active="exact"),
-                    dbc.NavLink("Capas", href="/dashboard/capas", active="exact"),
+                    dbc.NavLink("Perfil Colonia", href="/dashboard/perfil", active="exact", external_link=True),
+                    dbc.NavLink("Comparador", href="/dashboard/comparador", active="exact", external_link=True),
+                    dbc.NavLink("Capas", href="/dashboard/capas", active="exact", external_link=True),
                 ],
                 vertical=True,
                 pills=True,
@@ -191,28 +191,32 @@ class LayoutBuilder:
         return html.Div([
             html.H3("Rubro: Tablero de Demográfico"),
             self.create_filter_row(anios),
-            html.Div(id="mapa-plotly")
+            dcc.Loading(html.Div(id="mapa-plotly"),
+                        type="circle", color="#2d6a4f"),
         ])
 
     def create_edafologicos_page(self, anios: List[int]) -> html.Div:
         return html.Div([
             html.H3("Rubro: Tablero de Edafológico"),
             self.create_filter_row(anios),
-            html.Div(id="mapa-plotly")
+            dcc.Loading(html.Div(id="mapa-plotly"),
+                        type="circle", color="#2d6a4f"),
         ])
 
     def create_electorales_page(self, anios: List[int]) -> html.Div:
         return html.Div([
             html.H3("Rubro: Tablero Electoral"),
             self.create_filter_row(anios),
-            html.Div(id="mapa-plotly")
+            dcc.Loading(html.Div(id="mapa-plotly"),
+                        type="circle", color="#2d6a4f"),
         ])
 
     def create_servicios_page(self, anios: List[int]) -> html.Div:
         return html.Div([
             html.H3("Rubro: Tablero de Servicios"),
             self.create_filter_row(anios),
-            html.Div(id="mapa-plotly")
+            dcc.Loading(html.Div(id="mapa-plotly"),
+                        type="circle", color="#2d6a4f"),
         ])
 
     def create_ambientales_page(self, anios: List[int]) -> html.Div:
