@@ -430,7 +430,7 @@ class LayoutBuilder:
                         {"label": "Colonia", 
                          "value": "colonia"}
                     ],
-                    value = "manzana"
+                    value = "colonia"
                 )
             ], style={"width": "20%", 
                       "display": "inline-block", 

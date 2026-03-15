@@ -18,8 +18,20 @@ body {
 
 /* --- Sidebar (by ID) --- */
 #sidebar-coyoacan {
+    z-index: 9999 !important;
+    position: fixed !important;
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+
+/* Prevent Plotly maps from capturing all pointer events */
+.js-plotly-plot .plotly .mapboxgl-canvas-container {
+    pointer-events: auto;
+}
+
+/* Keep mapbox from expanding outside its container */
+.js-plotly-plot {
+    isolation: isolate;
 }
 
 #sidebar-coyoacan .nav-pills .nav-link {

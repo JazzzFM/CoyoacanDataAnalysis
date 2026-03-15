@@ -603,9 +603,12 @@ class CallbackRegister:
             if figura is None:
                 return html.Div("Mapa no disponible (datos vacíos).")
 
-            return dcc.Graph(figure = figura,
-                             style = {'width': '100%',
-                                      'height': '800px'})
+            return dcc.Graph(figure=figura,
+                             style={'width': '100%', 'height': '800px'},
+                             config={'scrollZoom': False,
+                                     'doubleClick': 'reset',
+                                     'displayModeBar': True,
+                                     'modeBarButtonsToRemove': ['lasso2d', 'select2d']})
 
     def _parse_dataset_key(self, pathname: str) -> str:
         """
