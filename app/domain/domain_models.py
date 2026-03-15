@@ -48,12 +48,12 @@ class TableController:
         }
 
         self.poligonos_ageb = {
-            "table_name": "poligonos_manzanas_agebs_colonias",
+            "table_name": "poligonos_ageb",
             "geom_column": "GEOM_AGEB"
         }
 
         self.poligonos_colonia = {
-            "table_name": "poligonos_manzanas_agebs_colonias",
+            "table_name": "poligonos_colonia",
             "geom_column": "GEOM_COLONIA"
         }
 
