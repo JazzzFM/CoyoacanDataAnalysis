@@ -1138,9 +1138,14 @@ class CallbackRegister:
             for col, label, unidad in kpi_defs:
                 if col in df.columns and pd.notna(row.get(col)):
                     val = row[col]
+                    try:
+                        val_num = float(val)
+                        val_str = f"{val_num:,.1f}"
+                    except (ValueError, TypeError):
+                        val_str = str(val)
                     rank = int(df[col].rank(ascending=False, method='min')[row.name])
                     kpis.append(dbc.Col(dbc.Card(dbc.CardBody([
-                        html.H4(f"{val:,.1f}", className="text-primary mb-0"),
+                        html.H4(val_str, className="text-primary mb-0"),
                         html.P(f"{label} ({unidad})", className="text-muted mb-0",
                                style={"fontSize": "0.8rem"}),
                         html.Small(f"#{rank} de {total}",
@@ -1177,7 +1182,8 @@ class CallbackRegister:
                     items.append(html.Li([
                         html.Span(f"{semaforo} {label}: ",
                                   style={"fontSize": "0.82rem"}),
-                        html.B(f"{val:,.1f}", style={"fontSize": "0.82rem"}),
+                        html.B(f"{float(val):,.1f}" if isinstance(val, (int, float)) else str(val),
+                               style={"fontSize": "0.82rem"}),
                         html.Span(f"  (#{rank})",
                                   className="text-muted",
                                   style={"fontSize": "0.75rem"}),
