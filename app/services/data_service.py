@@ -74,20 +74,23 @@ class DataService:
         def _cols_existentes(cols):
             return [c for c in cols if c in gdf.columns]
 
+        # Detectar columna de geometría activa
+        geom_col = gdf.geometry.name if hasattr(gdf, 'geometry') and gdf.geometry is not None else 'geometry'
+
         if filters.granularidad == "ageb":
-            agrupa = _cols_existentes(columnas_fijas + metricas + ["ID_AGEB", "GEOM_AGEB"])
+            agrupa = _cols_existentes(columnas_fijas + metricas + ["ID_AGEB", geom_col])
             gdf = gdf.groupby(list(set(agrupa)))\
                 .first().reset_index()
             gdf = gdf[list(set(agrupa))]
-            gdf = gdf.set_geometry("GEOM_AGEB")
+            gdf = gdf.set_geometry(geom_col)
 
         elif filters.granularidad == "colonia":
             if filters.type_data == "demograficos":
-                agrupa = _cols_existentes(columnas_fijas + metricas + ["ID_COLONIA", "GEOM_COLONIA"])
+                agrupa = _cols_existentes(columnas_fijas + metricas + ["ID_COLONIA", geom_col])
                 gdf = gdf.groupby(list(set(agrupa)))\
                     .first().reset_index()
                 gdf = gdf[list(set(agrupa))]
-                gdf = gdf.set_geometry("GEOM_COLONIA")
+                gdf = gdf.set_geometry(geom_col)
 
             elif filters.type_data == "edafologicos":
                 group_cols = _cols_existentes(['ID_COLONIA', 'USO_SUELO',
@@ -99,16 +102,18 @@ class DataService:
                         .sort_values('counts', ascending=False)\
                         .drop_duplicates('ID_COLONIA')
 
-                gdf = gdf[['ID_COLONIA', 'GEOM_COLONIA']].merge(
+                geom_cols_avail = [c for c in ['GEOM_COLONIA', geom_col] if c in gdf.columns]
+                merge_cols = ['ID_COLONIA'] + geom_cols_avail[:1]
+                gdf = gdf[merge_cols].merge(
                         gdf_,
-                        on = ['ID_COLONIA'],
-                        how = 'left'
+                        on=['ID_COLONIA'],
+                        how='left'
                     )
-                gdf = gdf.set_geometry("GEOM_COLONIA")\
+                gdf = gdf.set_geometry(geom_cols_avail[0] if geom_cols_avail else geom_col)\
                     .dropna(subset=['USO_SUELO'])
         else:
-            agrupa = _cols_existentes(columnas_fijas + metricas + ["ID_MANZANA", "GEOM_MANZANA"])
+            agrupa = _cols_existentes(columnas_fijas + metricas + ["ID_MANZANA", geom_col])
             gdf = gdf[list(set(agrupa))]
-            gdf = gdf.set_geometry("GEOM_MANZANA")
+            gdf = gdf.set_geometry(geom_col)
 
         return gdf

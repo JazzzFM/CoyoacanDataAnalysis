@@ -148,7 +148,7 @@ class FiguresGenerator:
                     if config.titulo_colorbar 
                     else config.columna_metrica
                 ),
-                titleside='right',
+                title_side='right',
                 ticks='outside',
                 lenmode='fraction',
                 len=0.75,
