@@ -1145,9 +1145,18 @@ class CallbackRegister:
                         items.append(html.Li(f"{label}: sin dato",
                                              style={"fontSize": "0.82rem"}))
                         continue
-                    serie = df[col].fillna(0)
+                    serie = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                    if serie.dtype.kind not in ('i', 'f'):
+                        items.append(html.Li(f"{label}: {val}",
+                                             style={"fontSize": "0.82rem"}))
+                        continue
+                    val_num = pd.to_numeric(val, errors='coerce')
+                    if pd.isna(val_num):
+                        items.append(html.Li(f"{label}: {val}",
+                                             style={"fontSize": "0.82rem"}))
+                        continue
                     p33, p66 = serie.quantile(0.33), serie.quantile(0.66)
-                    semaforo = "🟢" if val <= p33 else ("🟡" if val <= p66 else "🔴")
+                    semaforo = "🟢" if val_num <= p33 else ("🟡" if val_num <= p66 else "🔴")
                     rank = int(serie.rank(ascending=False, method='min')[row.name])
                     items.append(html.Li([
                         html.Span(f"{semaforo} {label}: ",
