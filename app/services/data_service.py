@@ -74,8 +74,20 @@ class DataService:
         def _cols_existentes(cols):
             return [c for c in cols if c in gdf.columns]
 
-        # Detectar columna de geometría activa
-        geom_col = gdf.geometry.name if hasattr(gdf, 'geometry') and gdf.geometry is not None else 'geometry'
+        # Detectar columna de geometría activa (buscar entre candidatas)
+        geom_col = None
+        try:
+            if hasattr(gdf, 'geometry') and gdf.geometry is not None:
+                geom_col = gdf.geometry.name
+        except Exception:
+            pass
+        if geom_col is None or geom_col not in gdf.columns:
+            for candidate in ['GEOM_MANZANA', 'GEOM_AGEB', 'GEOM_COLONIA', 'geometry']:
+                if candidate in gdf.columns:
+                    geom_col = candidate
+                    break
+            else:
+                geom_col = gdf.columns[-1]  # fallback
 
         if filters.granularidad == "ageb":
             agrupa = _cols_existentes(columnas_fijas + metricas + ["ID_AGEB", geom_col])
