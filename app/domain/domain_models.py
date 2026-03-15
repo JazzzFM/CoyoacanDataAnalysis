@@ -123,12 +123,9 @@ class DashboardFilters:
 
     def __post_init__(self):
         if self.type_data == "demograficos":
-            self.nombre_zona_col = "NOMBRE_COLONIA"
+            self.nombre_zona_col = "ID_AGEB"
             self.tooltip_cols = [
                 "ID_AGEB",
-                "NOMBRE_COLONIA",
-                "alc",
-                "amb_loc",
                 "area_km2"
             ]
         elif self.type_data == "edafologicos":

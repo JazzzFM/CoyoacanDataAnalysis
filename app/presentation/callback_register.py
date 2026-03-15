@@ -527,20 +527,23 @@ class CallbackRegister:
 
             elif gran == 'colonia':
                 if dataset_key == "demograficos":
+                    # Agregar demograficos a colonias via manzanas (ID_AGEB → ageb)
+                    mz = self.poligonos_manzana[['ID_AGEB', 'ID_COLONIA']].drop_duplicates()
+                    demo_col = merge(mz, self.data, left_on='ID_AGEB', right_on='ageb', how='inner')
+                    # Promediar por colonia
+                    num_cols = [c for c in demo_col.columns if demo_col[c].dtype.kind in ('i', 'f')]
+                    demo_agg = demo_col.groupby('ID_COLONIA')[num_cols].mean().reset_index()
                     self.gdf_poligonos_data = merge(
-                        self.poligonos_colonia,
-                        self.data,
-                        left_on = ['ID_AGEB'],
-                        right_on = ['ageb'],
-                        how = 'left')
+                        self.poligonos_colonia, demo_agg,
+                        on='ID_COLONIA', how='left')
 
                 elif dataset_key == 'edafologicos':
+                    # Agregar edafologicos a colonias via manzanas
+                    mz = self.poligonos_manzana[['ID_MANZANA', 'ID_COLONIA']].drop_duplicates()
+                    edaf_col = merge(mz, self.data, on='ID_MANZANA', how='inner')
                     self.gdf_poligonos_data = merge(
-                        self.poligonos_colonia,
-                        self.data,
-                        left_on = ['ID_MANZANA', 'GEOM_MANZANA'],
-                        right_on = ['ID_MANZANA', 'GEOM_MANZANA'],
-                        how = 'left')
+                        self.poligonos_colonia, edaf_col,
+                        on='ID_COLONIA', how='left')
 
             elif gran == 'ageb':
                 if dataset_key == "demograficos":
@@ -595,6 +598,16 @@ class CallbackRegister:
             # Seleccionamos aleatoriamente un esquema de color
             esquema_select = random.choice(AVAILABLE_COLOR_SCHEMES)
 
+            # Determinar columna de nombre para hover (usar la que exista)
+            nombre_hover = filters.nombre_zona_col
+            if nombre_hover and nombre_hover not in gdf_filtrado.columns:
+                for fallback in ['NOMBRE_COLONIA', 'ID_COLONIA', 'ID_AGEB', 'ID_MANZANA', 'colonia']:
+                    if fallback in gdf_filtrado.columns:
+                        nombre_hover = fallback
+                        break
+                else:
+                    nombre_hover = None
+
             # Creamos la configuración para el mapa
             map_config = MapVisualizationConfig(
                 titulo = titulo,
@@ -602,7 +615,7 @@ class CallbackRegister:
                 titulo_colorbar = dataset_key,
                 hover_columns = hover_cols,
                 esquema_color = esquema_select,
-                nombre_hover = filters.nombre_zona_col,
+                nombre_hover = nombre_hover,
             )
 
             try:
