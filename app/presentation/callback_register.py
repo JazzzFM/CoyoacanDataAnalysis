@@ -92,81 +92,74 @@ class CallbackRegister:
         """
 
         @app.callback(
-            Output("page-content", "children"),
+            [Output("page-content", "children"),
+             Output("current-dataset-key", "data")],
             [Input("url", "pathname")]
         )
-        def render_page_content(pathname: str) -> html.Div:
+        def render_page_content(pathname: str):
+            dataset_key = self._parse_dataset_key(pathname) if pathname else ""
+
             if pathname in ("/dashboard/", "/dashboard"):
-                return self._build_inicio_page()
-            
+                return self._build_inicio_page(), ""
+
             elif pathname == "/dashboard/demograficos":
                 self.data = self.data_service\
                      .initialize_dataset(self.table_controller.demograficos)
                 anios = self.data_service\
                     .obtener_anios_disponibles(self.data)
-                return self.page_builder.create_demograficos_page(anios)
+                return self.page_builder.create_demograficos_page(anios), "demograficos"
 
             elif pathname == "/dashboard/edafologicos":
                 self.data = self.data_service\
                     .initialize_dataset(self.table_controller.edafologicos)
                 anios = self.data_service\
                     .obtener_anios_disponibles(self.data)
-                return self.page_builder.create_edafologicos_page(anios)
+                return self.page_builder.create_edafologicos_page(anios), "edafologicos"
 
             elif pathname == "/dashboard/electorales":
                 self.data = self.data_service\
                     .initialize_dataset(self.table_controller.electorales)
-                    
                 anios = self.data_service\
                     .obtener_anios_disponibles(self.data)
+                return self.page_builder.create_electorales_page(anios), "electorales"
 
-                page = self.page_builder.create_electorales_page(anios)
-                return page
-            
             elif pathname == "/dashboard/servicios":
                 self.data = self.data_service\
                     .initialize_dataset(self.table_controller.servicios)
-                
                 anios = self.data_service\
                     .obtener_anios_disponibles(self.data)
-                
-                page = self.page_builder.create_servicios_page(anios)
-                return page
-            
+                return self.page_builder.create_servicios_page(anios), "servicios"
+
             elif pathname == "/dashboard/ambientales":
                 self.data = self.data_service\
                     .initialize_dataset(self.table_controller.ambientales)
-
                 anios = self.data_service\
                     .obtener_anios_disponibles(self.data)
-
-                page = self.page_builder.create_ambientales_page(anios)
-                return page
+                return self.page_builder.create_ambientales_page(anios), "ambientales"
 
             elif pathname == "/dashboard/infraestructura":
                 self.data = self.data_service\
                     .initialize_dataset(self.table_controller.infraestructura)
                 cats = sorted(self.data['subcategoria'].unique())
-                return self.page_builder.create_infraestructura_page(cats)
+                return self.page_builder.create_infraestructura_page(cats), "infraestructura"
 
             elif pathname == "/dashboard/recursos-naturales":
                 self.data = self.data_service\
                     .initialize_dataset(self.table_controller.recursos_naturales)
                 cats = sorted(self.data['categoria'].unique())
-                return self.page_builder.create_recursos_naturales_page(cats)
+                return self.page_builder.create_recursos_naturales_page(cats), "recursos_naturales"
 
             elif pathname == "/dashboard/vulnerabilidad":
                 self._vuln_data = self.data_service\
                     .initialize_dataset(self.table_controller.ambientales)
                 return self.page_builder.create_vulnerabilidad_page(
-                    self._COMPONENTES_VULNERABILIDAD)
+                    self._COMPONENTES_VULNERABILIDAD), ""
 
             elif pathname == "/dashboard/comparador":
                 self._comparador_data = self.data_service\
                     .initialize_dataset(self.table_controller.ambientales)
-                colonias = sorted(
-                    self._comparador_data['colonia'].unique())
-                return self.page_builder.create_comparador_page(colonias)
+                colonias = sorted(self._comparador_data['colonia'].unique())
+                return self.page_builder.create_comparador_page(colonias), ""
 
             elif pathname == "/dashboard/capas":
                 self._capas_indicadores = self.data_service\
@@ -175,68 +168,55 @@ class CallbackRegister:
                     .initialize_dataset(self.table_controller.infraestructura)
                 self._capas_recursos = self.data_service\
                     .initialize_dataset(self.table_controller.recursos_naturales)
-
                 metricas_base = [
-                    {'label': 'Densidad vivienda (viv/ha)',
-                     'value': 'densidad_viv_ha'},
-                    {'label': 'Área verde por hab. (m²)',
-                     'value': 'm2_area_verde_hab'},
-                    {'label': 'Viviendas desocupadas (%)',
-                     'value': 'pct_viviendas_desocupadas'},
-                    {'label': 'Valor del suelo ($/m²)',
-                     'value': 'valor_suelo_pesos'},
-                    {'label': 'Espacio público por hab. (m²)',
-                     'value': 'm2_espacio_pub_hab'},
-                    {'label': 'Temperatura nocturna (°C)',
-                     'value': 'temp_nocturna_media'},
-                    {'label': 'Viviendas con internet (%)',
-                     'value': 'pct_viv_internet'},
-                    {'label': 'Consumo agua promedio (m³)',
-                     'value': 'consumo_agua_prom_m3'},
-                    {'label': 'Tasa crecimiento 2010-2020',
-                     'value': 'tasa_crecimiento_2010_2020'},
+                    {'label': 'Densidad vivienda (viv/ha)', 'value': 'densidad_viv_ha'},
+                    {'label': 'Área verde por hab. (m²)', 'value': 'm2_area_verde_hab'},
+                    {'label': 'Viviendas desocupadas (%)', 'value': 'pct_viviendas_desocupadas'},
+                    {'label': 'Valor del suelo ($/m²)', 'value': 'valor_suelo_pesos'},
+                    {'label': 'Espacio público por hab. (m²)', 'value': 'm2_espacio_pub_hab'},
+                    {'label': 'Temperatura nocturna (°C)', 'value': 'temp_nocturna_media'},
+                    {'label': 'Viviendas con internet (%)', 'value': 'pct_viv_internet'},
+                    {'label': 'Consumo agua promedio (m³)', 'value': 'consumo_agua_prom_m3'},
+                    {'label': 'Tasa crecimiento 2010-2020', 'value': 'tasa_crecimiento_2010_2020'},
                 ]
-                cats_infra = sorted(
-                    self._capas_infra['subcategoria'].unique())
-                cats_rec = sorted(
-                    self._capas_recursos['categoria'].unique())
+                cats_infra = sorted(self._capas_infra['subcategoria'].unique())
+                cats_rec = sorted(self._capas_recursos['categoria'].unique())
                 return self.page_builder.create_capas_page(
-                    metricas_base, cats_infra, cats_rec)
+                    metricas_base, cats_infra, cats_rec), ""
 
             elif pathname == "/dashboard/perfil":
                 self._perfil_data = self.data_service\
                     .initialize_dataset(self.table_controller.ambientales)
                 colonias = sorted(self._perfil_data['colonia'].unique())
-                return self.page_builder.create_perfil_page(colonias)
+                return self.page_builder.create_perfil_page(colonias), ""
 
             elif pathname == "/dashboard/correlaciones":
                 self._corr_data = self.data_service\
                     .initialize_dataset(self.table_controller.ambientales)
                 return self.page_builder.create_correlaciones_page(
-                    self._METRICAS_CORRELACIONES)
+                    self._METRICAS_CORRELACIONES), ""
 
             elif pathname == "/dashboard/riesgo":
                 self._riesgo_indicadores = self.data_service\
                     .initialize_dataset(self.table_controller.ambientales)
                 self._riesgo_infra = self.data_service\
                     .initialize_dataset(self.table_controller.infraestructura)
-                return self.page_builder.create_riesgo_page()
+                return self.page_builder.create_riesgo_page(), ""
 
             elif pathname == "/dashboard/accesibilidad":
                 self._accesibilidad_colonias = self.data_service\
                     .initialize_dataset(self.table_controller.ambientales)
                 self._accesibilidad_servicios = self.data_service\
                     .initialize_dataset(self.table_controller.servicios)
-                cats = sorted(
-                    self._accesibilidad_servicios['categoria'].unique())
-                return self.page_builder.create_accesibilidad_page(cats)
+                cats = sorted(self._accesibilidad_servicios['categoria'].unique())
+                return self.page_builder.create_accesibilidad_page(cats), ""
 
             else:
                 return html.Div([
-                    html.H1("404: No encontrado", className = "text-danger"),
+                    html.H1("404: No encontrado", className="text-danger"),
                     html.Hr(),
                     html.P(f"La ruta {pathname} no fue reconocida."),
-                ])
+                ]), ""
 
     def _build_inicio_page(self) -> html.Div:
         """
@@ -447,19 +427,15 @@ class CallbackRegister:
 
         @app.callback(
             Output("metrica", "options"),
-            [Input("anio", "value"), 
-             Input("granularidad", "value"), 
-             Input("url", "pathname")]
+            [Input("anio", "value"),
+             Input("granularidad", "value"),
+             Input("current-dataset-key", "data")]
         )
-        def actualizar_opciones_metrica(anio: Optional[int], gran: str, pathname: str):
-            # Solo actuar en páginas de rubros con dropdown de métricas
-            paginas_validas = {"/dashboard/demograficos", "/dashboard/edafologicos",
-                               "/dashboard/electorales", "/dashboard/servicios",
-                               "/dashboard/ambientales"}
-            if pathname not in paginas_validas:
+        def actualizar_opciones_metrica(anio: Optional[int], gran: str, dataset_key: str):
+            rubros_validos = {"demograficos", "edafologicos", "electorales",
+                              "servicios", "ambientales"}
+            if not dataset_key or dataset_key not in rubros_validos:
                 return []
-
-            dataset_key = self._parse_dataset_key(pathname)
             gdf = self.data
 
             if gdf is None or gdf.empty:
@@ -486,23 +462,19 @@ class CallbackRegister:
 
         @app.callback(
             Output("mapa-plotly", "children"),
-            [Input("anio", "value"), 
-             Input("granularidad", "value"), 
-             Input("metrica", "value"), 
-             Input("url", "pathname")]
+            [Input("anio", "value"),
+             Input("granularidad", "value"),
+             Input("metrica", "value"),
+             Input("current-dataset-key", "data")]
         )
-        def actualizar_mapa(anio: Optional[int], gran: str, metrica: Optional[str], pathname: str):
-            if not metrica or not pathname:
+        def actualizar_mapa(anio: Optional[int], gran: str, metrica: Optional[str], dataset_key: str):
+            if not metrica:
                 return html.Div("Seleccione una métrica para visualizar el mapa.")
 
-            # Solo actuar en páginas de rubros con mapa coroplético
-            paginas_validas = {"/dashboard/demograficos", "/dashboard/edafologicos",
-                               "/dashboard/electorales", "/dashboard/servicios",
-                               "/dashboard/ambientales"}
-            if pathname not in paginas_validas:
+            rubros_validos = {"demograficos", "edafologicos", "electorales",
+                              "servicios", "ambientales"}
+            if not dataset_key or dataset_key not in rubros_validos:
                 return html.Div()
-
-            dataset_key = self._parse_dataset_key(pathname)
 
             # Datasets con geometria propia (no requieren merge con poligonos)
             if dataset_key in ("electorales", "servicios", "ambientales"):
@@ -694,13 +666,11 @@ class CallbackRegister:
             Output("mapa-categorico", "children"),
             [Input("cat-infra", "value"),
              Input("cat-recursos", "value"),
-             Input("url", "pathname")]
+             Input("current-dataset-key", "data")]
         )
-        def actualizar_mapa_categorico(cats_infra, cats_recursos, pathname):
-            if pathname not in ("/dashboard/infraestructura", "/dashboard/recursos-naturales"):
+        def actualizar_mapa_categorico(cats_infra, cats_recursos, dataset_key):
+            if dataset_key not in ("infraestructura", "recursos_naturales"):
                 return html.Div()
-
-            dataset_key = self._parse_dataset_key(pathname)
 
             if dataset_key == "infraestructura":
                 categorias_sel = cats_infra or []

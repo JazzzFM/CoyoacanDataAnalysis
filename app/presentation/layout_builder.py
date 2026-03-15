@@ -81,6 +81,7 @@ class LayoutBuilder:
 
         return html.Div([
             dcc.Location(id="url"),
+            dcc.Store(id="current-dataset-key", data=""),
             sidebar,
             content
         ])
