@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     buildCommand: ./build.sh
-    startCommand: gunicorn --bind 0.0.0.0:$PORT --timeout 120 --workers 2 run:app
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --timeout 120 --workers 1 run:app
     envVars:
       - key: DATABASE_URI
         sync: false

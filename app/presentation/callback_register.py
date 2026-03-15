@@ -43,16 +43,32 @@ class CallbackRegister:
         self.data_service = data_service
         self.page_builder = page_builder
 
-        self.poligonos_manzana = self.data_service\
-            .initialize_dataset(self.table_controller.poligonos_manzana)
-
-        self.poligonos_ageb = self.data_service\
-            .initialize_dataset(self.table_controller.poligonos_ageb)
-
+        # Lazy loading: polígonos se cargan solo cuando se necesitan
+        self._poligonos_manzana = None
+        self._poligonos_ageb = None
+        self._poligonos_colonia = None
         self.data = None  # Dataset activo (se inicializa al navegar a un rubro)
 
-        self.poligonos_colonia = self.data_service\
-            .initialize_dataset(self.table_controller.poligonos_colonia)
+    @property
+    def poligonos_manzana(self):
+        if self._poligonos_manzana is None:
+            self._poligonos_manzana = self.data_service\
+                .initialize_dataset(self.table_controller.poligonos_manzana)
+        return self._poligonos_manzana
+
+    @property
+    def poligonos_ageb(self):
+        if self._poligonos_ageb is None:
+            self._poligonos_ageb = self.data_service\
+                .initialize_dataset(self.table_controller.poligonos_ageb)
+        return self._poligonos_ageb
+
+    @property
+    def poligonos_colonia(self):
+        if self._poligonos_colonia is None:
+            self._poligonos_colonia = self.data_service\
+                .initialize_dataset(self.table_controller.poligonos_colonia)
+        return self._poligonos_colonia
         
     def register_callbacks(self, app: Dash) -> None:
         """

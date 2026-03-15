@@ -72,7 +72,12 @@ class LayoutBuilder:
             ),
         ], id="sidebar-coyoacan", style=sidebar_style)
 
-        content = html.Div(id="page-content", style=content_style)
+        content = dcc.Loading(
+            html.Div(id="page-content", style=content_style),
+            type="circle",
+            color="#2d6a4f",
+            fullscreen=False,
+        )
 
         return html.Div([
             dcc.Location(id="url"),

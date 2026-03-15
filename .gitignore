@@ -173,3 +173,6 @@ __pycache__/
 .env
 .git
 .gitignore
+
+# Cache geodata (parquet)
+.cache_geodata/
