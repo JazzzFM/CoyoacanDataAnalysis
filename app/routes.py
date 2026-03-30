@@ -38,3 +38,22 @@ def logout():
 def dashboard():
     return redirect('/dashboard/')  # Redirige a la ruta de Dash
 
+
+@main_bp.route('/health')
+def health_check():
+    """
+    Health check endpoint — mantiene vivos Supabase y Seenode.
+    Configura UptimeRobot/cron-job.org para pingear cada 5 min:
+    GET https://tu-dominio.com/health
+    """
+    import os
+    from sqlalchemy import create_engine, text
+    from flask import jsonify
+    try:
+        engine = create_engine(os.environ.get('DATABASE_URI', ''))
+        with engine.connect() as conn:
+            conn.execute(text('SELECT 1'))
+        return jsonify({"status": "ok", "db": "connected"}), 200
+    except Exception as e:
+        return jsonify({"status": "degraded", "db": str(e)[:100]}), 200
+
